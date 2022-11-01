@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 
 const placesRoutes = require("./routes/places-routes");
 const usersRoutes = require("./routes/users-routes");
@@ -8,9 +9,9 @@ const app = express();
 
 app.use(express.json());
 
+// app.use("/homepage");
 app.use("/api/places", placesRoutes);
 app.use("/api/users", usersRoutes);
-// app.use("/homepage");
 
 // const handleErrors = (message, errorCode) => {
 //   const error = new HttpError(message, errorCode);
@@ -30,4 +31,13 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || "An unknown error occured" });
 });
 
-app.listen(4000, () => console.log("Server listening on port 4000."));
+mongoose
+  .connect(
+    "mongodb+srv://d-place-user:T1IvInZiTrWm2GI7@cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
+  )
+  .then(() => {
+    app.listen(4000, () => console.log("Server listening on port 4000."));
+  })
+  .catch((err) => {
+    console.log(err);
+  });
