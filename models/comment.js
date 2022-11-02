@@ -4,11 +4,11 @@ const Schema = mongoose.Schema;
 
 const commentSchema = new Schema({
   // commentId: "co1",
-  postCommentDate: { type: Date, required: true },
   commentText: { type: String, maxLength: 377 },
+  postCommentDate: { type: Date, required: true },
   placeId: { type: Schema.Types.ObjectId, required: true, ref: "Place" },
-  //   title: {type: String, maxLength: 67},
   creatorId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+  //   title: {type: String, maxLength: 67},
   //   creatorId: "u1",
   //   creatorName: "Anderson",
   //   creatorImageUrl:

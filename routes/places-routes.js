@@ -5,7 +5,7 @@ const placesController = require("../controllers/places-controller");
 
 const router = express.Router();
 
-router.get("/:placeId");
+router.get("/:pid", placesController.getPlaceById);
 
 router.post(
   "/newplace",
@@ -20,24 +20,32 @@ router.post(
   placesController.createPlace
 );
 
-router.patch("/editplace/:placeId", [
-  check("title").not().isEmpty().isLength({ max: 67 }),
-  check("description").not().isEmpty().isLength({ max: 377 }),
-  // check("imageUrl").not().isEmpty(),
-  check("address").not().isEmpty().isLength({ max: 99 }),
-  check("favorite").not().isEmpty().isBoolean(),
-  // check("postDate").isISO8601().toDate(),
-]);
+router.patch(
+  "/editplace/:pid",
+  [
+    check("title").not().isEmpty().isLength({ max: 67 }),
+    check("description").not().isEmpty().isLength({ max: 377 }),
+    // check("imageUrl").not().isEmpty(),
+    check("address").not().isEmpty().isLength({ max: 99 }),
+    // check("favorite").not().isEmpty().isBoolean(),
+    // check("postDate").isISO8601().toDate(),
+  ],
+  placesController.updatePlace
+);
 
-router.delete("/deleteplace/:placeId");
+router.delete("/deleteplace/:pid", placesController.deletePlace);
 
-router.post("/newcomment/:placeId", [
-  check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
-  check("commentText").not().isEmpty().isLength({ max: 377 }),
-]);
+router.post(
+  "/newcomment",
+  [
+    //check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
+    check("commentText").not().isEmpty().isLength({ max: 377 }),
+  ],
+  placesController.createComment
+);
 
 router.patch("/editcomment/:placeId:/:commentId", [
-  check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
+  // check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
   check("commentText").not().isEmpty().isLength({ max: 377 }),
 ]);
 

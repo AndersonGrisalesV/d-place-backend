@@ -35,6 +35,7 @@ const getPlacesByUserId = async (req, res, next) => {
   try {
     userWithPlaces = await User.findById(userId).populate({
       path: "places",
+
       model: Place,
     });
   } catch (err) {
@@ -66,14 +67,9 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
   try {
     userWithFavoritePlaces = await User.findById(userId).populate({
       path: "places",
+      match: { favorite: true },
       model: Place,
     });
-    if (!userWithFavoritePlaces[0].favorite) {
-      await userWithFavoritePlaces
-        .populate({ path: "places", model: Place })
-        .execPopulate();
-    }
-    console.log(userWithFavoritePlaces);
   } catch (err) {
     const error = new HttpError(
       "Something went wrong retrieving the places, please try again later.",
@@ -81,6 +77,12 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
     );
     return next(error);
   }
+
+  res.json({
+    places: userWithFavoritePlaces.places.map((place) =>
+      place.toObject({ getters: true })
+    ),
+  });
 };
 
 const signup = async (req, res, next) => {
