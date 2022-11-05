@@ -36,7 +36,7 @@ router.patch(
 router.delete("/deleteplace/:pid", placesController.deletePlace);
 
 router.post(
-  "/newcomment",
+  "/:pid/newcomment",
   [
     //check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
     check("commentText").not().isEmpty().isLength({ max: 377 }),
@@ -49,7 +49,7 @@ router.patch("/editcomment/:placeId:/:commentId", [
   check("commentText").not().isEmpty().isLength({ max: 377 }),
 ]);
 
-router.delete("/deletecomment/:placeId/:commentId");
+router.delete("/:pid/deletecomment/:cid", placesController.deleteComment);
 
 module.exports = router;
 

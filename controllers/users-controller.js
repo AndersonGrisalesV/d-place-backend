@@ -14,8 +14,7 @@ const getAllUsers = async (req, res, next) => {
   let users;
 
   try {
-    users = await User.find({}, "-password, -confirmPassword");
-    console.log(users);
+    users = await User.find({}, "-password -confirmPassword");
   } catch (err) {
     const error = new HttpError(
       "There was a problem retrieving the users, please try again later.",
@@ -35,7 +34,6 @@ const getPlacesByUserId = async (req, res, next) => {
   try {
     userWithPlaces = await User.findById(userId).populate({
       path: "places",
-
       model: Place,
     });
   } catch (err) {
