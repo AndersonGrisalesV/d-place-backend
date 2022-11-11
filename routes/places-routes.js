@@ -44,10 +44,14 @@ router.post(
   placesController.createComment
 );
 
-router.patch("/editcomment/:placeId:/:commentId", [
-  // check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
-  check("commentText").not().isEmpty().isLength({ max: 377 }),
-]);
+router.patch(
+  "/:pid/editcomment/:cid",
+  [
+    // check("postCommentDate").isISO8601().toDate(), //maybe requirees a specific format
+    check("commentText").not().isEmpty().isLength({ max: 377 }),
+  ],
+  placesController.updateComment
+);
 
 router.delete("/:pid/deletecomment/:cid", placesController.deleteComment);
 

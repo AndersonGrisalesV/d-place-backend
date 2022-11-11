@@ -29,12 +29,12 @@ app.use((error, req, res, next) => {
     return next(error);
   }
   res.status(error.code || 500);
-  res.json({ message: error.message || "An unknown error occured" });
+  res.json({ message: error.message || "An unknown error occurred" });
 });
 
 mongoose
   .connect(
-    "mongodb+srv://d-place-user:<password>@cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
+    "mongodb+srv://d-place-user:  @cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
   )
   .then(() => {
     app.listen(4000, () => console.log("Server listening on port 4000."));
