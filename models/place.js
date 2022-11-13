@@ -8,7 +8,10 @@ const placeSchema = new Schema({
   description: { type: String, required: true, maxLength: 377 },
   imageUrl: { type: String, required: true },
   address: { type: String, required: true, maxLength: 99 },
-  favorite: { type: Boolean, required: true },
+  // favorite: { type: Boolean, required: true },
+  favoritesUserIds: [
+    { type: Schema.Types.ObjectId, required: true, ref: "User" },
+  ],
   location: {
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },

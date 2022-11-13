@@ -11,14 +11,14 @@ const getAllPlaces = async (req, res, next) => {
 
   try {
     places = await Place.find({}, "-address -location");
-    console.log(places);
   } catch (err) {
     const error = new HttpError(
-      "There was a problem retrieving the places, please try again later.",
+      "It was not possible to fetch the places, please try again later.",
       500
     );
     return next(error);
   }
+
   res.json({
     places: places.map((place) => place.toObject({ getters: true })),
   });

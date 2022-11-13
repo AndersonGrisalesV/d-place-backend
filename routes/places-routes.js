@@ -14,7 +14,7 @@ router.post(
     check("description").not().isEmpty().isLength({ max: 377 }),
     // check("imageUrl").not().isEmpty(),
     check("address").not().isEmpty().isLength({ max: 99 }),
-    check("favorite").not().isEmpty().isBoolean(),
+    // check("favorite").not().isEmpty().isBoolean(),
     check("postDate"),
   ],
   placesController.createPlace

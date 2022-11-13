@@ -5,19 +5,14 @@ const HttpError = require("../models/http-error");
 const User = require("../models/user");
 const Place = require("../models/place");
 
-// const handleErrors = (message, errorCode) => {
-//   const error = new HttpError(message, errorCode);
-//   throw error;
-// };
-
 const getAllUsers = async (req, res, next) => {
+  // Finds all users of the website
   let users;
-
   try {
     users = await User.find({}, "-password -confirmPassword");
   } catch (err) {
     const error = new HttpError(
-      "There was a problem retrieving the users, please try again later.",
+      "It was not possible to fetch all users, please try again later.",
       500
     );
     return next(error);
@@ -29,8 +24,8 @@ const getAllUsers = async (req, res, next) => {
 const getPlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
+  // Finds user places
   let userWithPlaces;
-
   try {
     userWithPlaces = await User.findById(userId).populate({
       path: "places",
@@ -38,7 +33,7 @@ const getPlacesByUserId = async (req, res, next) => {
     });
   } catch (err) {
     const error = new HttpError(
-      "Something went wrong retrieving the places, please try again later.",
+      "It was not possible to fetch the user places, please try again later.",
       500
     );
     return next(error);
@@ -46,7 +41,7 @@ const getPlacesByUserId = async (req, res, next) => {
 
   if (!userWithPlaces || userWithPlaces.places.length === 0) {
     return next(
-      new HttpError("Could not find places for the provided user id.", 404)
+      new HttpError("Could not find places for the provided user Id.", 404)
     );
   }
 
@@ -60,24 +55,35 @@ const getPlacesByUserId = async (req, res, next) => {
 const getFavoritePlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
+  // Finds user favorite places if user has it(them) as favorite
   let userWithFavoritePlaces;
-
   try {
     userWithFavoritePlaces = await User.findById(userId).populate({
-      path: "places",
-      match: { favorite: true },
+      path: "favorites",
       model: Place,
+      // populate: { path: "comments" },
     });
+
+    console.log(userWithFavoritePlaces);
   } catch (err) {
     const error = new HttpError(
-      "Something went wrong retrieving the places, please try again later.",
+      "It was not possible to fecth favorite user places, please try again later.",
       500
     );
     return next(error);
   }
 
+  if (!userWithFavoritePlaces || userWithFavoritePlaces.places.length === 0) {
+    return next(
+      new HttpError(
+        "Could not find favorite user places for the provided user Id.",
+        404
+      )
+    );
+  }
+
   res.json({
-    places: userWithFavoritePlaces.places.map((place) =>
+    places: userWithFavoritePlaces.favorites.map((place) =>
       place.toObject({ getters: true })
     ),
   });
@@ -93,8 +99,8 @@ const signup = async (req, res, next) => {
 
   const { name, email, password, confirmPassword } = req.body;
 
+  // Finds if user already exists by email
   let existingUser;
-
   try {
     existingUser = await User.findOne({ email: email });
   } catch (err) {
@@ -113,6 +119,7 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  // Defines new user's Schema
   const createdUser = new User({
     name,
     email,
@@ -120,10 +127,12 @@ const signup = async (req, res, next) => {
     confirmPassword,
     image:
       "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    favorites: [],
     places: [],
     comments: [],
   });
 
+  // Saves new user
   try {
     await createdUser.save();
   } catch (err) {
@@ -137,6 +146,7 @@ const signup = async (req, res, next) => {
 const login = async (req, res, next) => {
   const { email, password } = req.body;
 
+  // Finds if user already exists
   let existingUser;
   try {
     existingUser = await User.findOne({ email: email });
@@ -161,11 +171,3 @@ exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;
 exports.signup = signup;
 exports.login = login;
-
-// name: { type: String, required: true, minLength: 4 },
-// email: { type: String, required: true, unique: true },
-// password: { type: String, required: true, minLength: 5 },
-// confirmPassword: { type: String, required: true, minLength: 5 },
-// image: { type: String, required: false },
-// places: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
-// comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
