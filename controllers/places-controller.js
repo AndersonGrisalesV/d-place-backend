@@ -186,6 +186,7 @@ const deletePlace = async (req, res, next) => {
     place = await Place.findById(placeId, "favoritesUserIds").populate({
       path: "creatorId",
       model: User,
+      populate: { path: "comments" },
     });
   } catch (err) {
     const error = new HttpError(
@@ -225,6 +226,21 @@ const deletePlace = async (req, res, next) => {
   // If user owns the place it deletes this place from the user as well
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
     console.log("user" + user);
+
+    let favoritesFromUserToDelete = user.favorites.map(async (favorite) => {
+      console.log("fav" + favorite);
+      if (user.favorites) {
+        let favoritePlacesToDelete = favorite.favoritesUserIds.map(
+          async (id) => {
+            console.log("fav id" + id);
+            if (favorite._id == plcid) {
+              await user.favorites.remove(plcid);
+            }
+          }
+        );
+      }
+    });
+
     let commentFromUserToDelete = user.comments.map(async (comment) => {
       // console.log("fcom" + comment);
       if (comment.placeId == plcid) {
@@ -234,19 +250,6 @@ const deletePlace = async (req, res, next) => {
     });
 
     console.log("userfa" + user.favorites);
-
-    let favoritesFromUserToDelete = user.favorites.map(async (favorite) => {
-      console.log("fav" + favorite);
-      if (!user.favorites) {
-        let favoritePlacesToDelete = favorite.favoritesUserIds.map(
-          async (id) => {
-            if (favorite._id == plcid) {
-              await user.favorites.remove(plcid);
-            }
-          }
-        );
-      }
-    });
 
     await user.save().catch((err) => {
       const error = new HttpError(
@@ -277,35 +280,12 @@ const deletePlace = async (req, res, next) => {
   // Deletes comments from this place
   let commentsToDelete = retreivedCommentsToDelete.map(async (comment) => {
     if (comment.placeId._id == plcid) {
-      let commentFromUserToDelete = comment.placeId.comments.map(async (id) => {
-        await place.comments.remove(id);
-      });
+      // let commentFromUserToDelete = comment.placeId.comments.map(async (id) => {
+      //   // await place.comments.remove(id);
+      // });
       await comment.deleteOne({ _id: comment._id });
     }
   });
-
-  // console.log("place" + place);
-
-  // let deleteFavoritesFromPlace = place.favoritesUserIds.map(
-  //   async (favorite) => {
-  //     console.log("place" + place);
-  //     console.log("favplaces" + favorite);
-
-  //     await place.favoritesUserIds.remove(favorite);
-  //   }
-  // );
-
-  // Saves place with removed comments because there's a problem if we attempt to delete place and comments don't exist
-  try {
-    await place.save();
-  } catch (err) {
-    const error = new HttpError(
-      "Something went wrong, could not delete the place.",
-      500
-    );
-
-    return next(error);
-  }
 
   // Deletes place
   // Removes reference from place stored in user's owner of the place
@@ -314,12 +294,10 @@ const deletePlace = async (req, res, next) => {
     sess.startTransaction();
     await place.remove({ session: sess, validateModifiedOnly: true });
     place.creatorId.places.pull(place);
-
-    // await place.deleteOne({ favoritesUserIds: place.favoritesUserIds });
-    await place.deleteOne({ places: place.creatorId });
-
     await place.creatorId.save({ session: sess });
     await sess.commitTransaction();
+
+    await place.deleteOne({ places: place.creatorId });
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete the place.",
