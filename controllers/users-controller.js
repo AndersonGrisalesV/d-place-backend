@@ -163,7 +163,11 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
-  res.json({ message: `Welcome back: ${existingUser.name}` });
+  // res.json({ message: `Welcome back: ${existingUser.name}` });
+  res.json({
+    message: "Logged in:",
+    user: existingUser.toObject({ getters: true }),
+  });
 };
 
 exports.getAllUsers = getAllUsers;
