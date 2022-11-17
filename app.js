@@ -16,7 +16,7 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE")
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE");
   next();
 });
 
@@ -39,7 +39,7 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(
-    "mongodb+srv://d-place-user:T1IvInZiTrWm2GI7@cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
+    "mongodb+srv://d-place-user:  @cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
   )
   .then(() => {
     app.listen(4000, () => console.log("Server listening on port 4000."));
