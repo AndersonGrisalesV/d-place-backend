@@ -39,7 +39,11 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(
+<<<<<<< HEAD
     "mongodb+srv://d-place-user:  @cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
+=======
+    "mongodb+srv://d-place-user:@cluster0.bvvsm.mongodb.net/d_place?retryWrites=true&w=majority"
+>>>>>>> 62261f6a12cc47f7386ea7c0f288a432269ac3be
   )
   .then(() => {
     app.listen(4000, () => console.log("Server listening on port 4000."));
