@@ -140,7 +140,10 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(201).json({ user: createdUser.toObject({ getters: true }) });
+  res.status(201).json({
+    message: "Welcome",
+    user: createdUser.toObject({ getters: true }),
+  });
 };
 
 const login = async (req, res, next) => {
@@ -165,7 +168,7 @@ const login = async (req, res, next) => {
 
   // res.json({ message: `Welcome back: ${existingUser.name}` });
   res.json({
-    message: "Logged in:",
+    message: "Welcome back",
     user: existingUser.toObject({ getters: true }),
   });
 };
