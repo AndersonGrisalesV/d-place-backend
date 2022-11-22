@@ -97,7 +97,7 @@ const signup = async (req, res, next) => {
     );
   }
 
-  const { name, email, password, confirmPassword } = req.body;
+  const { name, email, password, confirmPassword, image } = req.body;
 
   // Finds if user already exists by email
   let existingUser;
@@ -125,8 +125,9 @@ const signup = async (req, res, next) => {
     email,
     password,
     confirmPassword,
-    image:
-      "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    // image:
+    image,
+    //   "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
     favorites: [],
     places: [],
     comments: [],

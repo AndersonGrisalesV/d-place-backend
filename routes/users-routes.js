@@ -18,7 +18,7 @@ router.post(
     check("email").normalizeEmail().isEmail(),
     check("password").not().isEmpty().isLength({ min: 5 }),
     check("confirmPassword").not().isEmpty().isLength({ min: 5 }),
-    // check("imageUrl").not().isEmpty(),
+    // check("image").not().isEmpty(),
   ],
   usersController.signup
 );
