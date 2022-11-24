@@ -13,10 +13,15 @@ const getPlaceById = async (req, res, next) => {
   // Finds place by Id
   let place;
   try {
-    place = await Place.findById(placeId).populate({
-      path: "comments",
-      model: Comment,
-    });
+    place = await Place.findById(placeId)
+      .populate({
+        path: "comments",
+        model: Comment,
+      })
+      .populate({
+        path: "creatorId",
+        model: User,
+      });
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not find place.",
