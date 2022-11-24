@@ -10,7 +10,10 @@ const getAllPlaces = async (req, res, next) => {
   let places;
 
   try {
-    places = await Place.find({}, "-address -location");
+    places = await Place.find({}, "-address -location").populate({
+      path: "creatorId",
+      model: User,
+    });
   } catch (err) {
     const error = new HttpError(
       "It was not possible to fetch the places, please try again later.",
