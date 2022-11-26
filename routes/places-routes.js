@@ -28,7 +28,7 @@ router.patch(
     // check("imageUrl").not().isEmpty(),
     check("address").not().isEmpty().isLength({ max: 99 }),
     // check("favorite").not().isEmpty().isBoolean(),
-    // check("postDate").isISO8601().toDate(),
+    check("postDate").isISO8601().toDate(),
   ],
   placesController.updatePlace
 );
