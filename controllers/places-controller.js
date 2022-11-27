@@ -131,20 +131,23 @@ const updatePlace = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
+    console.log(errors);
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
   }
 
-  const { title, description, address, postDate } = req.body;
+  const { title, description, address, postDate, image } = req.body;
   const placeId = req.params.pid;
 
-  // Updates coordinates neccesary for the geolocation used by googleMaps
   let coordinates;
-  try {
-    coordinates = await getCoordinatesForAddress(address);
-  } catch (error) {
-    return next(error);
+  if (address !== "same") {
+    // Updates coordinates neccesary for the geolocation used by googleMaps
+    try {
+      coordinates = await getCoordinatesForAddress(address);
+    } catch (error) {
+      return next(error);
+    }
   }
 
   // Finds place to update
@@ -160,10 +163,21 @@ const updatePlace = async (req, res, next) => {
   }
 
   // Asigns new data to be updated
-  place.title = title;
-  place.description = description;
-  place.address = address;
-  place.location = coordinates;
+
+  if (title !== "same") {
+    place.title = title;
+  }
+  if (description !== "same") {
+    place.description = description;
+  }
+  if (address !== "same") {
+    place.address = address;
+    place.location = coordinates;
+  }
+  if (image !== "same") {
+    place.imageUrl = image;
+  }
+
   place.postDate = postDate;
 
   // Updates place
@@ -174,6 +188,7 @@ const updatePlace = async (req, res, next) => {
       "Something went wrong, could not update place.",
       500
     );
+    console.log(err);
     return next(error);
   }
   res.status(200).json({ place: place.toObject({ getters: true }) });
