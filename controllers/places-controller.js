@@ -17,6 +17,7 @@ const getPlaceById = async (req, res, next) => {
       .populate({
         path: "comments",
         model: Comment,
+        populate: { path: "creatorId" },
       })
       .populate({
         path: "creatorId",
