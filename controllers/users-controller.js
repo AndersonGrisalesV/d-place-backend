@@ -24,12 +24,14 @@ const getAllUsers = async (req, res, next) => {
 const getPlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
+  // const { userId } = req.body;
   // Finds user places
   let userWithPlaces;
   try {
     userWithPlaces = await User.findById(userId).populate({
       path: "places",
       model: Place,
+      populate: { path: "creatorId" },
     });
   } catch (err) {
     const error = new HttpError(
@@ -39,6 +41,7 @@ const getPlacesByUserId = async (req, res, next) => {
     return next(error);
   }
 
+  // console.log(userWithPlaces.places.length);
   if (!userWithPlaces || userWithPlaces.places.length === 0) {
     return next(
       new HttpError("Could not find places for the provided user Id.", 404)
@@ -61,6 +64,7 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
     userWithFavoritePlaces = await User.findById(userId).populate({
       path: "favorites",
       model: Place,
+      populate: { path: "creatorId" },
       // populate: { path: "comments" },
     });
 
@@ -73,7 +77,10 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
     return next(error);
   }
 
-  if (!userWithFavoritePlaces || userWithFavoritePlaces.places.length === 0) {
+  if (
+    !userWithFavoritePlaces ||
+    userWithFavoritePlaces.favorites.length === 0
+  ) {
     return next(
       new HttpError(
         "Could not find favorite user places for the provided user Id.",
