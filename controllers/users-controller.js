@@ -21,6 +21,32 @@ const getAllUsers = async (req, res, next) => {
   res.json({ users: users.map((user) => user.toObject({ getters: true })) });
 };
 
+const getUserById = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  // Finds user by Id
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find user.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError(
+      "Could not find a user for the provided Id.",
+      404
+    );
+    return next(error);
+  }
+
+  res.json({ user: user.toObject({ getters: true }) });
+};
+
 const getPlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
@@ -182,6 +208,7 @@ const login = async (req, res, next) => {
 };
 
 exports.getAllUsers = getAllUsers;
+exports.getUserById = getUserById;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;
 exports.signup = signup;

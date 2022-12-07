@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.get("/", usersController.getAllUsers);
 
+router.get("/:uid", usersController.getUserById);
+
 router.get("/profile/:uid", usersController.getPlacesByUserId);
 
 router.get("/favorites/:uid", usersController.getFavoritePlacesByUserId);
