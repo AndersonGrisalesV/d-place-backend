@@ -7,4 +7,6 @@ const router = express.Router();
 
 router.get("/", homepageController.getAllPlaces);
 
+router.get("/comments", homepageController.getAllComments);
+
 module.exports = router;
