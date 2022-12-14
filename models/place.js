@@ -6,7 +6,17 @@ const placeSchema = new Schema({
   //   placeId: "p1",
   title: { type: String, required: true, maxLength: 67 },
   description: { type: String, required: true, maxLength: 377 },
-  imageUrl: { type: String, required: true },
+  // imageUrl: { type: String, required: true },
+  imageUrl: {
+    public_id: {
+      type: String,
+      // required: true,
+    },
+    url: {
+      type: String,
+      // required: true,
+    },
+  },
   address: { type: String, required: true, maxLength: 99 },
   // favorite: { type: Boolean, required: true },
   favoritesUserIds: [

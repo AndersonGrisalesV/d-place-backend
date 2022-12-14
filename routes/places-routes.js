@@ -2,6 +2,7 @@ const express = require("express");
 const { check } = require("express-validator");
 
 const placesController = require("../controllers/places-controller");
+const fileUpload = require("../middleware/file-upload");
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ router.get("/:pid", placesController.getPlaceById);
 
 router.post(
   "/newplace",
+  fileUpload.single("image"),
   [
     check("title").not().isEmpty().isLength({ max: 67 }),
     check("description").not().isEmpty().isLength({ max: 377 }),

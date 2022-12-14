@@ -7,6 +7,8 @@ const Place = require("../models/place");
 const User = require("../models/user");
 const Comment = require("../models/comment");
 
+const cloudinary = require("../util/cloudinary");
+
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
 
@@ -45,13 +47,13 @@ const getPlaceById = async (req, res, next) => {
 const createPlace = async (req, res, next) => {
   const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    return next(
-      new HttpError("Invalid inputs passed, please check your data.", 422)
-    );
-  }
+  // if (!errors.isEmpty()) {
+  //   return next(
+  //     new HttpError("Invalid inputs passed, please check your data.", 422)
+  //   );
+  // }
 
-  const { title, description, address, postDate, creatorId } = req.body;
+  const { title, description, address, postDate, creatorId, image } = req.body;
 
   // Creates coordinates neccesary for the geolocation used by googleMaps
   let coordinates;
@@ -61,12 +63,27 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
+  console.log(image);
+  // Saves image in cloudinary
+  let result;
+  try {
+    result = await cloudinary.uploader.upload(image, {
+      folder: "places",
+      // width: 300,
+      // crop: "scale"
+    });
+  } catch (error) {
+    return next(error);
+  }
+
   // Defines new place's Schema
   const createdPlace = new Place({
     title,
     description,
-    imageUrl:
-      "https://www.esbnyc.com/sites/default/files/2020-01/thumbnail5M2VW4ZF.jpg",
+    imageUrl: {
+      public_id: result.public_id,
+      url: result.secure_url,
+    },
     address,
     favoritesUserIds: [],
     location: coordinates,
