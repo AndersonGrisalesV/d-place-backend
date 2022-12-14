@@ -24,6 +24,7 @@ router.post(
 
 router.patch(
   "/editplace/:pid",
+  fileUpload.single("image"),
   [
     check("title").not().isEmpty().isLength({ max: 67 }),
     check("description").not().isEmpty().isLength({ max: 377 }),

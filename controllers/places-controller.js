@@ -8,6 +8,7 @@ const User = require("../models/user");
 const Comment = require("../models/comment");
 
 const cloudinary = require("../util/cloudinary");
+const { Readable } = require("stream");
 
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
@@ -47,11 +48,11 @@ const getPlaceById = async (req, res, next) => {
 const createPlace = async (req, res, next) => {
   const errors = validationResult(req);
 
-  // if (!errors.isEmpty()) {
-  //   return next(
-  //     new HttpError("Invalid inputs passed, please check your data.", 422)
-  //   );
-  // }
+  if (!errors.isEmpty()) {
+    return next(
+      new HttpError("Invalid inputs passed, please check your data.", 422)
+    );
+  }
 
   const { title, description, address, postDate, creatorId, image } = req.body;
 
@@ -63,17 +64,43 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
-  console.log(image);
   // Saves image in cloudinary
   let result;
+  let croppedImage;
+
+  // const bufferUpload = async (buffer) => {
+  //   return new Promise((resolve, reject) => {
+  //     const writeStream = cloudinary.uploader.upload_stream((err, result) => {
+  //       if (err) {
+  //         reject(err);
+  //         return;
+  //       }
+  //       resolve(result);
+  //     });
+  //     const readStream = new Readable({
+  //       read() {
+  //         this.push(buffer);
+  //         this.push(null);
+  //       },
+  //     });
+  //     readStream.pipe(writeStream);
+  //   });
+  // };
+
   try {
     result = await cloudinary.uploader.upload(image, {
       folder: "places",
       // width: 300,
-      // crop: "scale"
+      // crop: "scale",
     });
+    // result = await bufferUpload(image);
   } catch (error) {
-    return next(error);
+    return next(
+      new HttpError(
+        "Something went worng when uploading the image, please try again.",
+        400
+      )
+    );
   }
 
   // Defines new place's Schema
@@ -193,7 +220,29 @@ const updatePlace = async (req, res, next) => {
     place.location = coordinates;
   }
   if (image !== "same") {
-    place.imageUrl = image;
+    const ImgId = place.imageUrl.public_id;
+    if (ImgId) {
+      await cloudinary.uploader.destroy(ImgId);
+    }
+
+    let newImage;
+    try {
+      newImage = await cloudinary.uploader.upload(image, {
+        folder: "places",
+      });
+    } catch (error) {
+      return next(
+        new HttpError(
+          "Something went worng when uploading the image, please try again.",
+          400
+        )
+      );
+    }
+
+    place.imageUrl = {
+      public_id: newImage.public_id,
+      url: newImage.url,
+    };
   }
 
   place.postDate = postDate;
