@@ -5,6 +5,8 @@ const HttpError = require("../models/http-error");
 const User = require("../models/user");
 const Place = require("../models/place");
 
+const cloudinary = require("../util/cloudinary");
+
 const getAllUsers = async (req, res, next) => {
   // Finds all users of the website
   let users;
@@ -152,15 +154,34 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  let result;
+
+  try {
+    result = await cloudinary.uploader.upload(image, {
+      folder: "ProfilePictures",
+      // width: 300,
+      // crop: "scale",
+    });
+    // result = await bufferUpload(image);
+  } catch (error) {
+    return next(
+      new HttpError(
+        "Something went wrong when uploading the image, please try again.",
+        400
+      )
+    );
+  }
+
   // Defines new user's Schema
   const createdUser = new User({
     name,
     email,
     password,
     confirmPassword,
-    // image:
-    image,
-    //   "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    imageUrl: {
+      public_id: result.public_id,
+      url: result.secure_url,
+    },
     favorites: [],
     places: [],
     comments: [],

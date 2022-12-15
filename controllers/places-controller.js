@@ -97,7 +97,7 @@ const createPlace = async (req, res, next) => {
   } catch (error) {
     return next(
       new HttpError(
-        "Something went worng when uploading the image, please try again.",
+        "Something went wrong when uploading the image, please try again.",
         400
       )
     );
@@ -176,7 +176,7 @@ const updatePlace = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    console.log(errors);
+    // console.log(errors);
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
@@ -233,7 +233,7 @@ const updatePlace = async (req, res, next) => {
     } catch (error) {
       return next(
         new HttpError(
-          "Something went worng when uploading the image, please try again.",
+          "Something went wrong when uploading the image, please try again.",
           400
         )
       );
@@ -255,7 +255,7 @@ const updatePlace = async (req, res, next) => {
       "Something went wrong, could not update place.",
       500
     );
-    console.log(err);
+    // console.log(err);
     return next(error);
   }
   res.status(200).json({ place: place.toObject({ getters: true }) });
@@ -270,7 +270,10 @@ const deletePlace = async (req, res, next) => {
   // Finds place to delete
   let place;
   try {
-    place = await Place.findById(placeId, "favoritesUserIds").populate({
+    place = await Place.findById(
+      placeId,
+      "favoritesUserIds, imageUrl"
+    ).populate({
       path: "creatorId",
       model: User,
       populate: { path: "comments" },
@@ -312,14 +315,14 @@ const deletePlace = async (req, res, next) => {
   // Selects user and comments from said user to remove from this specific place
   // If user owns the place it deletes this place from the user as well
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
-    console.log("user" + user);
+    // console.log("user" + user);
 
     let favoritesFromUserToDelete = user.favorites.map(async (favorite) => {
-      console.log("fav" + favorite);
+      // console.log("fav" + favorite);
       if (user.favorites) {
         let favoritePlacesToDelete = favorite.favoritesUserIds.map(
           async (id) => {
-            console.log("fav id" + id);
+            // console.log("fav id" + id);
             if (favorite._id == plcid) {
               await user.favorites.remove(plcid);
             }
@@ -336,7 +339,7 @@ const deletePlace = async (req, res, next) => {
       }
     });
 
-    console.log("userfa" + user.favorites);
+    // console.log("userfa" + user.favorites);
 
     await user.save().catch((err) => {
       const error = new HttpError(
@@ -377,6 +380,11 @@ const deletePlace = async (req, res, next) => {
   // Deletes place
   // Removes reference from place stored in user's owner of the place
   try {
+    //Deletes the image from cloduinary
+    const ImgId = place.imageUrl.public_id;
+
+    await cloudinary.uploader.destroy(ImgId);
+
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await place.remove({ session: sess, validateModifiedOnly: true });

@@ -3,11 +3,13 @@ const { check } = require("express-validator");
 
 const usersController = require("../controllers/users-controller");
 
+const fileUpload = require("../middleware/file-upload");
+
 const router = express.Router();
 
 router.get("/", usersController.getAllUsers);
 
-router.get("/:uid", usersController.getUserById);
+router.get("/profile/:uid", usersController.getUserById);
 
 // router.get("/profile/:uid", usersController.getPlacesByUserId);
 
@@ -17,6 +19,7 @@ router.get("/favorites/:uid", usersController.getFavoritePlacesByUserId);
 
 router.post(
   "/register",
+  fileUpload.single("image"),
   [
     check("name").not().isEmpty().isLength({ min: 4 }),
     check("email").normalizeEmail().isEmail(),

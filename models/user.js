@@ -9,7 +9,16 @@ const userSchema = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, minLength: 5 },
   confirmPassword: { type: String, required: true, minLength: 5 },
-  image: { type: String, required: false },
+  imageUrl: {
+    public_id: {
+      type: String,
+      // required: true,
+    },
+    url: {
+      type: String,
+      // required: true,
+    },
+  },
   favorites: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   places: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
