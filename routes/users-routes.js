@@ -11,6 +11,18 @@ router.get("/", usersController.getAllUsers);
 
 router.get("/profile/:uid", usersController.getUserById);
 
+router.patch(
+  "/profile/editprofile/:uid",
+  fileUpload.single("image"),
+  [
+    check("name").not().isEmpty().isLength({ min: 4 }),
+    check("email").normalizeEmail().isEmail(),
+    check("password").not().isEmpty().isLength({ min: 5 }),
+    check("confirmPassword").not().isEmpty().isLength({ min: 5 }),
+  ],
+  usersController.updateProfile
+);
+
 // router.get("/profile/:uid", usersController.getPlacesByUserId);
 
 router.get("/myplaces/:uid", usersController.getPlacesByUserId);

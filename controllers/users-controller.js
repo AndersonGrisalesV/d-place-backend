@@ -201,6 +201,85 @@ const signup = async (req, res, next) => {
   });
 };
 
+const updateProfile = async (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    // console.log(errors);
+    return next(
+      new HttpError("Invalid inputs passed, please check your data.", 422)
+    );
+  }
+
+  const { name, email, password, confirmPassword, image } = req.body;
+  const userId = req.params.uid;
+
+  // Finds user to update
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update profile.",
+      500
+    );
+    return next(error);
+  }
+
+  // Asigns new data to be updated
+
+  if (name !== "same") {
+    user.name = name;
+  }
+  if (email !== "same") {
+    user.email = email;
+  }
+  if (password !== "same") {
+    user.password = password;
+  }
+  if (confirmPassword !== "same") {
+    user.confirmPassword = confirmPassword;
+  }
+  if (image !== "same") {
+    const ImgId = user.imageUrl.public_id;
+    if (ImgId) {
+      await cloudinary.uploader.destroy(ImgId);
+    }
+
+    let newImage;
+    try {
+      newImage = await cloudinary.uploader.upload(image, {
+        folder: "ProfilePictures",
+      });
+    } catch (error) {
+      return next(
+        new HttpError(
+          "Something went wrong when uploading the image, please try again.",
+          400
+        )
+      );
+    }
+
+    user.imageUrl = {
+      public_id: newImage.public_id,
+      url: newImage.url,
+    };
+  }
+
+  // Updates place
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update place.",
+      500
+    );
+    // console.log(err);
+    return next(error);
+  }
+  res.status(200).json({ user: user.toObject({ getters: true }) });
+};
+
 const login = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -230,6 +309,7 @@ const login = async (req, res, next) => {
 
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
+exports.updateProfile = updateProfile;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;
 exports.signup = signup;
