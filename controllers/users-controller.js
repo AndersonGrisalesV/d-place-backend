@@ -204,12 +204,12 @@ const signup = async (req, res, next) => {
 const updateProfile = async (req, res, next) => {
   const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    // console.log(errors);
-    return next(
-      new HttpError("Invalid inputs passed, please check your data.", 422)
-    );
-  }
+  // if (!errors.isEmpty()) {
+  //   console.log(errors);
+  //   return next(
+  //     new HttpError("Invalid inputs passed, please check your data.", 422)
+  //   );
+  // }
 
   const { name, email, password, confirmPassword, image } = req.body;
   const userId = req.params.uid;
@@ -231,7 +231,7 @@ const updateProfile = async (req, res, next) => {
   if (name !== "same") {
     user.name = name;
   }
-  if (email !== "same") {
+  if (email !== "@same") {
     user.email = email;
   }
   if (password !== "same") {
