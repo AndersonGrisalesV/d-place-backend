@@ -23,6 +23,8 @@ router.patch(
   usersController.updateProfile
 );
 
+router.delete("/profile/deleteprofile/:uid", usersController.deleteProfile);
+
 // router.get("/profile/:uid", usersController.getPlacesByUserId);
 
 router.get("/myplaces/:uid", usersController.getPlacesByUserId);
