@@ -10,6 +10,8 @@ const Comment = require("../models/comment");
 const cloudinary = require("../util/cloudinary");
 const { Readable } = require("stream");
 
+const ObjectId = require("mongodb").ObjectId;
+
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
 
@@ -170,6 +172,62 @@ const createPlace = async (req, res, next) => {
   }
 
   res.status(201).json({ place: createdPlace });
+};
+
+const updateFavorites = async (req, res, next) => {
+  const placeId = req.params.pid;
+  const { userId } = req.body;
+
+  let PlaceToCheckFavoritsUserIds;
+  try {
+    PlaceToCheckFavoritsUserIds = await Place.findById(placeId);
+  } catch (err) {
+    const error = new HttpError(
+      "It was not possible to fetch the user places, please try again later.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!PlaceToCheckFavoritsUserIds) {
+    const error = new HttpError("Could not find this place.", 404);
+    return next(error);
+  }
+
+  let isFavorite = true;
+
+  if (PlaceToCheckFavoritsUserIds.favoritesUserIds) {
+    let favoritesUser = PlaceToCheckFavoritsUserIds.favoritesUserIds.map(
+      async (favorite) => {
+        // console.log(id);
+        console.log(favorite);
+        if (favorite == userId) {
+          isFavorite = false;
+          console.log(userId);
+          const newUid = new ObjectId(userId);
+          await User.findByIdAndUpdate(newUid, {
+            $pull: { favorites: placeId },
+          });
+          const newPid = new ObjectId(placeId);
+          await Place.findByIdAndUpdate(newPid, {
+            $pull: { favoritesUserIds: userId },
+          });
+        }
+      }
+    );
+    if (isFavorite) {
+      const newUid = new ObjectId(userId);
+      await User.findByIdAndUpdate(newUid, {
+        $push: { favorites: placeId },
+      });
+      const newPid = new ObjectId(placeId);
+      await Place.findByIdAndUpdate(newPid, {
+        $push: { favoritesUserIds: userId },
+      });
+    }
+  }
+
+  res.json({ favorite: isFavorite });
 };
 
 const updatePlace = async (req, res, next) => {
@@ -678,6 +736,7 @@ const deleteComment = async (req, res, next) => {
 
 exports.getPlaceById = getPlaceById;
 exports.createPlace = createPlace;
+exports.updateFavorites = updateFavorites;
 exports.updatePlace = updatePlace;
 exports.deletePlace = deletePlace;
 

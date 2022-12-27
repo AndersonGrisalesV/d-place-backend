@@ -22,6 +22,8 @@ router.post(
   placesController.createPlace
 );
 
+router.patch("/favoriteplace/:pid", placesController.updateFavorites);
+
 router.patch(
   "/editplace/:pid",
   fileUpload.single("image"),
