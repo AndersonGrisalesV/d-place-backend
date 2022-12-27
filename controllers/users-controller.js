@@ -8,6 +8,8 @@ const Comment = require("../models/comment");
 
 const cloudinary = require("../util/cloudinary");
 
+const ObjectId = require("mongodb").ObjectId;
+
 const getAllUsers = async (req, res, next) => {
   // Finds all users of the website
   let users;
@@ -316,10 +318,15 @@ const deleteProfile = async (req, res, next) => {
   // Finds comment to update
   let places;
   try {
-    places = await Place.find({}).populate({
-      path: "comments",
-      model: Comment,
-    });
+    places = await Place.find({})
+      .populate({
+        path: "comments",
+        model: Comment,
+      })
+      .populate({
+        path: "creatorId",
+        model: User,
+      });
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not retrieve places to delete.",
@@ -345,10 +352,10 @@ const deleteProfile = async (req, res, next) => {
   }
 
   if (!userPlaces) {
-    const error = new HttpError("Could not find places for this Id.", 404);
+    const error = new HttpError("This user no longer exists.", 404);
     return next(error);
   }
-  console.log(userPlaces);
+  // console.log(userPlaces);
 
   let retreivedUsersToDelete;
   try {
@@ -370,59 +377,9 @@ const deleteProfile = async (req, res, next) => {
     profilePictureToDelete = userPlaces.imageUrl.public_id;
   }
 
-  let placesToDelete = []; //also remove from users favorites
-  let commentsToDelete = []; //also remove from users comments
-  let imageIdsToDelete = []; //also remove from users comments
-
-  let placesAndCommentToDelete = places.map(async (place) => {
-    let count = 0;
-    // console.log(place.creatorId);
-    if (place.creatorId == userId) {
-      count++;
-      let placeId = [place._id];
-      placesToDelete = [...placesToDelete, ...placeId];
-      let imageId = place.imageUrl.public_id;
-      // console.log(imageId);
-      imageIdsToDelete = [...imageIdsToDelete, imageId];
-      await cloudinary.uploader.destroy(imageId);
-    }
-
-    if (place.comments) {
-      count++;
-      let CommetsFromPlacesToDelete = place.comments.map(async (comment) => {
-        if (comment.creatorId == userId) {
-          let commentId = [comment._id];
-          commentsToDelete = [...commentsToDelete, ...commentId];
-          await place.comments.remove(commentId);
-        }
-      });
-    }
-
-    if (place.favoritesUserIds) {
-      count++;
-      let CommetsFavoritesUserIdsFromPlacesToDelete =
-        place.favoritesUserIds.map(async (favorite) => {
-          // console.log(favorite);
-          if (favorite == userId) {
-            await place.favoritesUserIds.remove(userId);
-          }
-        });
-    }
-    if (count !== 0) {
-      await place.save().catch((err) => {
-        const error = new HttpError(
-          "Something went wrong, could not delete data from the users places.",
-          500
-        );
-        return next(error);
-      });
-    }
-  });
-
-  // Finds comment to update
-  let comments;
+  let toDeleteComments;
   try {
-    comments = await Comment.find({ _id: { $in: [...commentsToDelete] } });
+    toDeleteComments = await Comment.find({});
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not retrieve comments.",
@@ -431,76 +388,156 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
-  // console.log(placesToDelete);
-  // console.log(imageIdsToDelete);
-  // console.log(commentsToDelete);
+  let placesToDelete = []; //also remove from users favorites
+  let commentsToDelete = []; //also remove from users comments
+  let imageIdsToDelete = []; //also remove from users comments
+
+  let placesAndCommentToDelete = places.map(async (place) => {
+    let count = 0;
+    let allCommentsFromPost = false;
+    // console.log(place.creatorId);
+
+    if (place.creatorId._id == userId) {
+      allCommentsFromPost = true;
+      let placeId = [place._id];
+      placesToDelete = [...placesToDelete, ...placeId];
+
+      let imageId = place.imageUrl.public_id;
+      imageIdsToDelete = [...imageIdsToDelete, imageId];
+
+      // await cloudinary.uploader.destroy(imageId);
+    }
+
+    if (place.comments) {
+      let CommetsFromPlacesToDelete = place.comments.map(async (comment) => {
+        // console.log(comment.creatorId._id);
+        if (comment.creatorId._id == userId || place.creatorId._id == userId) {
+          let commentId = [comment._id];
+          commentsToDelete = [...commentsToDelete, ...commentId];
+          // console.log(comment.creatorId._id);
+          const newId = new ObjectId(place._id);
+          await Place.findByIdAndUpdate(newId, {
+            $pull: { comments: comment },
+          });
+
+          // await place.comments.remove(commentId);
+        }
+      });
+    }
+
+    if (place.favoritesUserIds) {
+      let CommetsFavoritesUserIdsFromPlacesToDelete =
+        place.favoritesUserIds.map(async (favorite) => {
+          if (favorite == userId) {
+            const newId = new ObjectId(place._id);
+            await Place.findByIdAndUpdate(newId, {
+              $pull: { favoritesUserIds: favorite },
+            });
+            //await place.favoritesUserIds.remove(userId);
+          }
+        });
+    }
+  });
+
+  // Finds comment to update
+  // let filteredPlacesToDelete;
+  // try {
+  //   filteredPlacesToDelete = await Place.find({
+  //     _id: { $in: [...placesToDelete] },
+  //   });
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     "Something went wrong, could not retrieve places to delete.",
+  //     500
+  //   );
+  //   return next(error);
+  // }
+
+  // let comments;
+  // try {
+  //   comments = await Comment.find({ _id: { $in: [...commentsToDelete] } });
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     "Something went wrong, could not retrieve comments.",
+  //     500
+  //   );
+  //   return next(error);
+  // }
+
+  console.log(commentsToDelete);
+
+  // let allComments = comments.map(async (comment) => {
+  // console.log(comment);
+  // await comment.deleteOne({ _id: comment._id }).catch((err) => {
+  //   const error = new HttpError(
+  //     "Something went wrong, could not delete comments from the users places.",
+  //     500
+  //   );
+  //   return next(error);
+  // });
+
+  // await comment.remove(comment._id);
+  // });
 
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
     // console.log(user.favorites);
-    if (user.favorites) {
-      let favoritesUser = user.favorites.map(async (favorite) => {
-        let favoritesDeleted = placesToDelete.map(async (id) => {
-          if ((favorite = id)) {
+
+    if (user.places) {
+      let placeFromUserToDelete = user.places.map(async (place) => {
+        let placesDeleted = placesToDelete.map(async (id) => {
+          if ((place = id)) {
             // console.log(id);
-            await user.favorites.remove(id);
+            const newUid = new ObjectId(user._id);
+            await User.findByIdAndUpdate(newUid, {
+              $pull: { places: place },
+            });
+            // await user.places.remove(place);
+            // await Place.deleteOne({ _id: id });
           }
         });
       });
     }
 
-    let commentFromUserToDelete = user.comments.map(async (comment) => {
-      // console.log(comment);
-
-      let commentsDeleted = commentsToDelete.map(async (id) => {
-        if ((comment._id = id)) {
+    if (user.favorites) {
+      let favoritesUser = user.favorites.map(async (favorite) => {
+        let favoritesDeleted = placesToDelete.map(async (id) => {
           // console.log(id);
-          await user.comments.remove(comment);
-        }
+          if ((favorite = id) || user._id == userId) {
+            console.log(favorite);
+            const newUid = new ObjectId(user._id);
+            await User.findByIdAndUpdate(newUid, {
+              $pull: { favorites: favorite },
+            });
+            // await user.favorites.remove(favorite);
+          }
+        });
       });
-    });
+    }
 
-    await user.save().catch((err) => {
-      const error = new HttpError(
-        "Something went wrong, could not delete data from owners of the place.",
-        500
-      );
-      return next(error);
-    });
+    if (user.comments) {
+      let commentFromUserToDelete = user.comments.map(async (comment) => {
+        let commentsDeleted = commentsToDelete.map(async (id) => {
+          // console.log(comment);
+          if ((comment._id = id)) {
+            console.log(id);
+            const newUid = new ObjectId(user._id);
+            await User.findByIdAndUpdate(newUid, {
+              $pull: { comments: comment },
+            });
+            // await user.comments.remove(comment);
+          }
+        });
+      });
+    }
   });
 
-  // console.log(placesToDelete);
-  console.log(commentsToDelete);
-  // console.log(comments);
-  // console.log(imageIdsToDelete);
-
-  let allComments = comments.map(async (comment) => {
-    await comment.remove({ _id: comment._id });
-  });
-
-  // Finds comment to update
-  let filteredPlacesToDelete;
   try {
-    filteredPlacesToDelete = await Place.find({
-      _id: { $in: [...placesToDelete] },
-    }).populate({
-      path: "comments",
-      model: Comment,
-    });
-  } catch (err) {
-    const error = new HttpError(
-      "Something went wrong, could not retrieve places to delete.",
-      500
-    );
-    return next(error);
-  }
-
-  try {
-    await userPlaces.remove({ _id: userId });
+    await Comment.deleteMany({ _id: { $in: [...commentsToDelete] } });
+    await Place.deleteMany({ _id: { $in: [...placesToDelete] } });
+    await User.deleteOne({ _id: userId });
     if (userPlaces.imageUrl.public_id) {
       await cloudinary.uploader.destroy(profilePictureToDelete);
     }
-
-    // console.log(userId);
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete the profile.",
@@ -510,12 +547,12 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
-  let allPlaces = filteredPlacesToDelete.map(async (place) => {
-    console.log(place);
-    await place.deleteOne({ _id: place._id });
-  });
+  // let allPlaces = filteredPlacesToDelete.map(async (place) => {
+  //   // console.log(place);
+  //   await place.deleteOne({ _id: place._id });
+  // });
 
-  // res.status(200).json({ message: "The profile was successfullly deleted" });
+  res.status(200).json({ message: "The profile was successfully deleted" });
 };
 
 exports.getAllUsers = getAllUsers;
