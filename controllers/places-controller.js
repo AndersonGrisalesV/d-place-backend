@@ -119,6 +119,7 @@ const createPlace = async (req, res, next) => {
     postDate,
     creatorId,
     comments: [],
+    shareCount: 0,
   });
 
   // Finds user to enable the creation of a place

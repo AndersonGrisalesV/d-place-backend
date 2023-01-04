@@ -27,6 +27,7 @@ const placeSchema = new Schema({
     lng: { type: Number, required: true },
   },
   postDate: { type: Date, required: true },
+  shareCount: { type: Number, required: false },
   creatorId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
   comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
   //   creatorName: {
