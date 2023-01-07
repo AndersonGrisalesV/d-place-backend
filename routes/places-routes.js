@@ -24,6 +24,8 @@ router.post(
 
 router.patch("/favoriteplace/:pid", placesController.updateFavorites);
 
+router.patch("/shareplace/:pid", placesController.updateCountShare);
+
 router.patch(
   "/editplace/:pid",
   fileUpload.single("image"),

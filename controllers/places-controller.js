@@ -231,6 +231,48 @@ const updateFavorites = async (req, res, next) => {
   res.json({ favorite: isFavorite });
 };
 
+const updateCountShare = async (req, res, next) => {
+  const placeId = req.params.pid;
+
+  let PlaceToupdateCountShares;
+  try {
+    PlaceToupdateCountShares = await Place.findById(placeId);
+  } catch (err) {
+    const error = new HttpError(
+      "It was not possible to fetch the places to update share count, please try again later.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!PlaceToupdateCountShares) {
+    const error = new HttpError("Could not find this place.", 404);
+    return next(error);
+  }
+
+  const { newShare } = req.body;
+
+  let isSharedPost = true;
+
+  PlaceToupdateCountShares.shareCount =
+    PlaceToupdateCountShares.shareCount + newShare;
+
+  // Updates place
+  try {
+    await PlaceToupdateCountShares.save();
+  } catch (err) {
+    isSharedPost = false;
+    const error = new HttpError(
+      "Something went wrong, could not update place's share counts.",
+      500
+    );
+    // console.log(err);
+    return next(error);
+  }
+
+  res.json({ sharePost: isSharedPost });
+};
+
 const updatePlace = async (req, res, next) => {
   const errors = validationResult(req);
 
@@ -738,6 +780,7 @@ const deleteComment = async (req, res, next) => {
 exports.getPlaceById = getPlaceById;
 exports.createPlace = createPlace;
 exports.updateFavorites = updateFavorites;
+exports.updateCountShare = updateCountShare;
 exports.updatePlace = updatePlace;
 exports.deletePlace = deletePlace;
 
