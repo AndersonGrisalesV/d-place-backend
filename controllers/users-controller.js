@@ -8,6 +8,8 @@ const Comment = require("../models/comment");
 
 const cloudinary = require("../util/cloudinary");
 
+const { v4: uuidv4 } = require("uuid");
+
 const ObjectId = require("mongodb").ObjectId;
 
 const getAllUsers = async (req, res, next) => {
@@ -159,20 +161,22 @@ const signup = async (req, res, next) => {
 
   let result;
 
-  try {
-    result = await cloudinary.uploader.upload(image, {
-      folder: "ProfilePictures",
-      // width: 300,
-      // crop: "scale",
-    });
-    // result = await bufferUpload(image);
-  } catch (error) {
-    return next(
-      new HttpError(
-        "Something went wrong when uploading the image, please try again.",
-        400
-      )
-    );
+  if (image !== "") {
+    try {
+      result = await cloudinary.uploader.upload(image, {
+        folder: "ProfilePictures",
+        // width: 300,
+        // crop: "scale",
+      });
+      // result = await bufferUpload(image);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "Something went wrong when uploading the image, please try again.",
+          400
+        )
+      );
+    }
   }
 
   // Defines new user's Schema
@@ -182,8 +186,8 @@ const signup = async (req, res, next) => {
     password,
     confirmPassword,
     imageUrl: {
-      public_id: result.public_id,
-      url: result.secure_url,
+      public_id: image !== "" ? result.public_id : uuidv4(),
+      url: image !== "" ? result.secure_url : "",
     },
     favorites: [],
     places: [],
@@ -270,13 +274,16 @@ const updateProfile = async (req, res, next) => {
   if (confirmPassword !== "same") {
     user.confirmPassword = confirmPassword;
   }
-  if (image !== "same") {
+
+  if (image !== "same" && image !== "noImage") {
     const ImgId = user.imageUrl.public_id;
     if (ImgId) {
       await cloudinary.uploader.destroy(ImgId);
     }
+  }
 
-    let newImage;
+  let newImage;
+  if (image !== "same" && image !== "noImage") {
     try {
       newImage = await cloudinary.uploader.upload(image, {
         folder: "ProfilePictures",
@@ -289,10 +296,26 @@ const updateProfile = async (req, res, next) => {
         )
       );
     }
+  }
 
+  if (image !== "same" && image !== "noImage") {
     user.imageUrl = {
       public_id: newImage.public_id,
       url: newImage.url,
+    };
+  }
+
+  if (image === "noImage") {
+    const ImgId = user.imageUrl.public_id;
+    if (ImgId) {
+      await cloudinary.uploader.destroy(ImgId);
+    }
+  }
+
+  if (image === "noImage") {
+    user.imageUrl = {
+      public_id: uuidv4(),
+      url: "",
     };
   }
 
