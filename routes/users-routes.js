@@ -6,8 +6,26 @@ const usersController = require("../controllers/users-controller");
 const fileUpload = require("../middleware/file-upload");
 
 const router = express.Router();
+const checkAuth = require("../middleware/check-auth");
 
 router.get("/", usersController.getAllUsers);
+
+router.post(
+  "/register",
+  fileUpload.single("image"),
+  [
+    check("name").not().isEmpty().isLength({ min: 4 }),
+    check("email").normalizeEmail().isEmail(),
+    check("password").not().isEmpty().isLength({ min: 5 }),
+    check("confirmPassword").not().isEmpty().isLength({ min: 5 }),
+    // check("image").not().isEmpty(),
+  ],
+  usersController.signup
+);
+
+router.post("/login", usersController.login);
+
+router.use(checkAuth);
 
 router.get("/profile/:uid", usersController.getUserById);
 
@@ -30,21 +48,6 @@ router.delete("/profile/deleteprofile/:uid", usersController.deleteProfile);
 router.get("/myplaces/:uid", usersController.getPlacesByUserId);
 
 router.get("/favorites/:uid", usersController.getFavoritePlacesByUserId);
-
-router.post(
-  "/register",
-  fileUpload.single("image"),
-  [
-    check("name").not().isEmpty().isLength({ min: 4 }),
-    check("email").normalizeEmail().isEmail(),
-    check("password").not().isEmpty().isLength({ min: 5 }),
-    check("confirmPassword").not().isEmpty().isLength({ min: 5 }),
-    // check("image").not().isEmpty(),
-  ],
-  usersController.signup
-);
-
-router.post("/login", usersController.login);
 
 module.exports = router;
 

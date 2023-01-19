@@ -5,8 +5,13 @@ const placesController = require("../controllers/places-controller");
 const fileUpload = require("../middleware/file-upload");
 
 const router = express.Router();
+const checkAuth = require("../middleware/check-auth");
 
 router.get("/:pid", placesController.getPlaceById);
+
+router.patch("/shareplace/:pid", placesController.updateCountShare);
+
+router.use(checkAuth);
 
 router.post(
   "/newplace",
@@ -23,8 +28,6 @@ router.post(
 );
 
 router.patch("/favoriteplace/:pid", placesController.updateFavorites);
-
-router.patch("/shareplace/:pid", placesController.updateCountShare);
 
 router.patch(
   "/editplace/:pid",
