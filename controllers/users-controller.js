@@ -141,7 +141,7 @@ const signup = async (req, res, next) => {
     );
   }
 
-  const { name, email, password, confirmPassword, image } = req.body;
+  const { name, email, password, confirmPassword, theme, image } = req.body;
 
   // Finds if user already exists by email
   let existingUser;
@@ -200,6 +200,7 @@ const signup = async (req, res, next) => {
     email,
     password: hashedPassword,
     confirmPassword: hashedPassword,
+    themePreference: theme,
     imageUrl: {
       public_id: image !== "" ? result.public_id : uuidv4(),
       url: image !== "" ? result.secure_url : "",
@@ -405,6 +406,45 @@ const updateProfile = async (req, res, next) => {
     return next(error);
   }
   res.status(200).json({ user: user.toObject({ getters: true }) });
+};
+
+const updateModePreference = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  const { theme } = req.body;
+
+  // Finds user to update theme
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update theme preference.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find this user.", 404);
+    return next(error);
+  }
+
+  user.themePreference = theme;
+
+  // Updates place
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update p theme preference.",
+      500
+    );
+    // console.log(err);
+    return next(error);
+  }
+
+  res.json({ message: "Theme preference successfully changed" });
 };
 
 const deleteProfile = async (req, res, next) => {
@@ -655,6 +695,7 @@ const deleteProfile = async (req, res, next) => {
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
 exports.updateProfile = updateProfile;
+exports.updateModePreference = updateModePreference;
 exports.deleteProfile = deleteProfile;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;

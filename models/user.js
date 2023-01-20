@@ -19,6 +19,7 @@ const userSchema = new Schema({
       // required: true,
     },
   },
+  themePreference: { type: String, required: true },
   favorites: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   places: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],

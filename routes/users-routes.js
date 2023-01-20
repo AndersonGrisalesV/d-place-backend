@@ -25,6 +25,8 @@ router.post(
 
 router.post("/login", usersController.login);
 
+router.patch("/updatetheme/:uid", usersController.updateModePreference);
+
 router.use(checkAuth);
 
 router.get("/profile/:uid", usersController.getUserById);
