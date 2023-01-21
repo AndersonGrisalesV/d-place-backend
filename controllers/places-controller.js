@@ -435,8 +435,16 @@ const deletePlace = async (req, res, next) => {
       let commentFromUserToDelete = user.comments.map(async (comment) => {
         // console.log("fcom" + comment);
         if (comment.placeId == plcid) {
-          await user.comments.remove(comment);
-          await user.places.remove(placeId);
+          // await user.comments.remove(comment);
+          const newUid = new ObjectId(user._id);
+          await User.findByIdAndUpdate(newUid, {
+            $pull: { comments: comment },
+          });
+          // await user.places.remove(plcid);
+
+          await User.findByIdAndUpdate(newUid, {
+            $pull: { places: placeId },
+          });
         }
       });
     }

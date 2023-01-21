@@ -20,7 +20,7 @@ const userSchema = new Schema({
     },
   },
   themePreference: { type: String, required: true },
-  viewedNotification: { type: Boolean, required: true },
+  viewedNotification: { type: Boolean },
   favorites: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   places: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
   comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
