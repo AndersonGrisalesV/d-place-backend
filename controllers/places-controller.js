@@ -431,14 +431,15 @@ const deletePlace = async (req, res, next) => {
         );
       }
     });
-
-    let commentFromUserToDelete = user.comments.map(async (comment) => {
-      // console.log("fcom" + comment);
-      if (comment.placeId == plcid) {
-        await user.comments.remove(comment);
-        await user.places.remove(placeId);
-      }
-    });
+    if (user.comments) {
+      let commentFromUserToDelete = user.comments.map(async (comment) => {
+        // console.log("fcom" + comment);
+        if (comment.placeId == plcid) {
+          await user.comments.remove(comment);
+          await user.places.remove(placeId);
+        }
+      });
+    }
 
     // console.log("userfa" + user.favorites);
 

@@ -141,7 +141,8 @@ const signup = async (req, res, next) => {
     );
   }
 
-  const { name, email, password, confirmPassword, theme, image } = req.body;
+  const { name, email, notification, password, confirmPassword, theme, image } =
+    req.body;
 
   // Finds if user already exists by email
   let existingUser;
@@ -198,6 +199,7 @@ const signup = async (req, res, next) => {
   const createdUser = new User({
     name,
     email,
+    viewedNotification: notification,
     password: hashedPassword,
     confirmPassword: hashedPassword,
     themePreference: theme,
@@ -239,6 +241,7 @@ const signup = async (req, res, next) => {
   //   return values;
   // };
 
+  res.cookie("theme", createdUser.themePreference);
   res.status(201).json({
     message: "Welcome",
     user: createdUser.toObject({ getters: true }),
@@ -290,7 +293,10 @@ const login = async (req, res, next) => {
   let token;
   try {
     token = jwt.sign(
-      { userId: existingUser.id, email: existingUser.email },
+      {
+        userId: existingUser.id,
+        email: existingUser.email,
+      },
       process.env.JWT_KEY,
       { expiresIn: "1h" }
     );
@@ -300,7 +306,9 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
-  // res.json({ message: `Welcome back: ${existingUser.name}` });
+  // res.cookie("rememberme", "1", { maxAge: 900000, httpOnly: false });
+  // res.send();
+
   res.json({
     message: "Welcome back",
     user: existingUser.toObject({ getters: true }),
@@ -651,21 +659,21 @@ const deleteProfile = async (req, res, next) => {
       });
     }
 
-    if (user.comments) {
-      let commentFromUserToDelete = user.comments.map(async (comment) => {
-        let commentsDeleted = commentsToDelete.map(async (id) => {
-          // console.log(comment);
-          if ((comment._id = id)) {
-            console.log(id);
-            const newUid = new ObjectId(user._id);
-            await User.findByIdAndUpdate(newUid, {
-              $pull: { comments: comment },
-            });
-            // await user.comments.remove(comment);
-          }
-        });
+    // if (user.comments) {
+    let commentFromUserToDelete = user.comments.map(async (comment) => {
+      let commentsDeleted = commentsToDelete.map(async (id) => {
+        // console.log(comment);
+        if ((comment._id = id)) {
+          console.log(id);
+          const newUid = new ObjectId(user._id);
+          await User.findByIdAndUpdate(newUid, {
+            $pull: { comments: comment },
+          });
+          // await user.comments.remove(comment);
+        }
       });
-    }
+    });
+    // }
   });
 
   try {

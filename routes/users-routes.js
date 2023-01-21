@@ -16,6 +16,8 @@ router.post(
   [
     check("name").not().isEmpty().isLength({ min: 4 }),
     check("email").normalizeEmail().isEmail(),
+    check("theme").not().isEmpty(),
+    check("notification").not().isEmpty(),
     check("password").not().isEmpty().isLength({ min: 5 }),
     check("confirmPassword").not().isEmpty().isLength({ min: 5 }),
     // check("image").not().isEmpty(),
