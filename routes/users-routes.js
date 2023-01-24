@@ -53,6 +53,8 @@ router.get("/myplaces/:uid", usersController.getPlacesByUserId);
 
 router.get("/favorites/:uid", usersController.getFavoritePlacesByUserId);
 
+router.patch("/notification/:uid", usersController.updateNotification);
+
 module.exports = router;
 
 // name: { type: String, required: true, minLength: 4 },

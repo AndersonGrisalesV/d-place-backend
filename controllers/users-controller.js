@@ -455,6 +455,45 @@ const updateModePreference = async (req, res, next) => {
   res.json({ message: "Theme preference successfully changed" });
 };
 
+const updateNotification = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  const { notification } = req.body;
+
+  // Finds user to update theme
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update viewed notification.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find this user.", 404);
+    return next(error);
+  }
+
+  user.viewedNotification = notification;
+
+  // Updates place
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update p theme preference.",
+      500
+    );
+    // console.log(err);
+    return next(error);
+  }
+
+  res.json({ message: "Viewed notification successfully updated" });
+};
+
 const deleteProfile = async (req, res, next) => {
   const userId = req.params.uid;
   // plcid Same as placeId but stored with a different name for a clearer distinction
@@ -704,6 +743,7 @@ exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
 exports.updateProfile = updateProfile;
 exports.updateModePreference = updateModePreference;
+exports.updateNotification = updateNotification;
 exports.deleteProfile = deleteProfile;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;
