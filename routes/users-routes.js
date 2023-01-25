@@ -55,12 +55,6 @@ router.get("/favorites/:uid", usersController.getFavoritePlacesByUserId);
 
 router.patch("/notification/:uid", usersController.updateNotification);
 
-module.exports = router;
+router.patch("/updateusernotification", usersController.updateUserNotification);
 
-// name: { type: String, required: true, minLength: 4 },
-// email: { type: String, required: true, unique: true },
-// password: { type: String, required: true, minLength: 5 },
-// confirmPassword: { type: String, required: true, minLength: 5 },
-// image: { type: String, required: false },
-// places: [{ type: Schema.Types.ObjectId, required: true, ref: "Place" }],
-// comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
+module.exports = router;

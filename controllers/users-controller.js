@@ -494,6 +494,68 @@ const updateNotification = async (req, res, next) => {
   res.json({ message: "Viewed notification successfully updated" });
 };
 
+const updateUserNotification = async (req, res, next) => {
+  // Finds all users of the website
+  let users;
+  try {
+    users = await User.find(
+      {},
+      "-password -confirmPassword -comments -places -favorites -themePreference -imageUrl -name -email"
+    );
+  } catch (err) {
+    const error = new HttpError(
+      "It was not possible to fetch all users, please try again later.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!users) {
+    const error = new HttpError(
+      "Could not find users to update notifications.",
+      404
+    );
+    return next(error);
+  }
+
+  let usersToUpdate = users.map(async (user) => {
+    // console.log(user.favorites);
+
+    if (!user.viewedNotification) {
+      try {
+        const newUid = new ObjectId(user._id);
+        await User.findByIdAndUpdate(newUid, {
+          $set: { viewedNotification: true },
+        });
+      } catch (err) {
+        const error = new HttpError(
+          "Something went wrong, could not update users viewed notification.",
+          500
+        );
+        console.log(err);
+        return next(error);
+      }
+
+      // await user.places.remove(place);
+      // await Place.deleteOne({ _id: id });
+    }
+  });
+
+  // // Updates place
+  // try {
+  //   await user.save();
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     "Something went wrong, could not update p theme preference.",
+  //     500
+  //   );
+  //   // console.log(err);
+  //   return next(error);
+  // }
+
+  res.json({ message: "Viewed user notification successfully updated" });
+};
+
 const deleteProfile = async (req, res, next) => {
   const userId = req.params.uid;
   // plcid Same as placeId but stored with a different name for a clearer distinction
@@ -744,6 +806,7 @@ exports.getUserById = getUserById;
 exports.updateProfile = updateProfile;
 exports.updateModePreference = updateModePreference;
 exports.updateNotification = updateNotification;
+exports.updateUserNotification = updateUserNotification;
 exports.deleteProfile = deleteProfile;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.getFavoritePlacesByUserId = getFavoritePlacesByUserId;
