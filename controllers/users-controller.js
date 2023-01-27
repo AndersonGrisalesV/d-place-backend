@@ -328,7 +328,8 @@ const updateProfile = async (req, res, next) => {
   //   );
   // }
 
-  const { name, email, password, confirmPassword, image } = req.body;
+  const { name, email, oldPassword, password, confirmPassword, image } =
+    req.body;
   const userId = req.params.uid;
 
   // Finds user to update
@@ -344,7 +345,7 @@ const updateProfile = async (req, res, next) => {
   }
 
   // Asigns new data to be updated
-
+  let hashedPassword;
   if (name !== "same") {
     user.name = name;
   }
@@ -352,10 +353,39 @@ const updateProfile = async (req, res, next) => {
     user.email = email;
   }
   if (password !== "same") {
-    user.password = password;
+    let isValidPassword = false;
+    try {
+      isValidPassword = await bcrypt.compare(oldPassword, user.password);
+    } catch (err) {
+      const error = new HttpError(
+        "Please check your credentials and try again.",
+        500
+      );
+      return next(error);
+    }
+
+    if (!isValidPassword) {
+      const error = new HttpError(
+        "Please check your credentials and try again.",
+        401
+      );
+      return next(error);
+    }
+
+    try {
+      hashedPassword = await bcrypt.hash(password, 12);
+    } catch (err) {
+      const error = new HttpError(
+        "Could not create new passwrod for the user, please try again.",
+        500
+      );
+      return next(error);
+    }
+
+    user.password = hashedPassword;
   }
   if (confirmPassword !== "same") {
-    user.confirmPassword = confirmPassword;
+    user.confirmPassword = hashedPassword;
   }
 
   if (image !== "same" && image !== "noImage") {

@@ -46,7 +46,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/homepage", homepageRoutes);
+app.use("/api/homepage", homepageRoutes);
 app.use("/api/places", placesRoutes);
 app.use("/api/users", usersRoutes);
 
