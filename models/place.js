@@ -1,43 +1,42 @@
 const mongoose = require("mongoose");
 
+// Creating a new Schema using mongoose
 const Schema = mongoose.Schema;
 
+// Defining the place schema with its properties
 const placeSchema = new Schema({
-  //   placeId: "p1",
+  // property for the place's title
   title: { type: String, required: true, maxLength: 67 },
+  // property for the place's description
   description: { type: String, required: true, maxLength: 377 },
-  // imageUrl: { type: String, required: true },
+  // property for the place's image Url
   imageUrl: {
     public_id: {
       type: String,
-      // required: true,
     },
     url: {
       type: String,
-      // required: true,
     },
   },
+  // property for the place's address
   address: { type: String, required: true, maxLength: 99 },
-  // favorite: { type: Boolean, required: true },
+  // property for the user's ID who have the pace as a favorite one
   favoritesUserIds: [
     { type: Schema.Types.ObjectId, required: true, ref: "User" },
   ],
+  // property for the place's location
   location: {
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
   },
   postDate: { type: Date, required: true },
+  // property for the place's share count
   shareCount: { type: Number, required: false },
+  // property for the user's ID who created the place
   creatorId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+  // property for the comment's ID related to the place that owns those comments
   comments: [{ type: Schema.Types.ObjectId, required: true, ref: "Comment" }],
-  //   creatorName: {
-  //     type: String,
-  //     required: true,
-  //     minLength: 4,
-  //     ref: "User",
-  //   },
-  //   creatorImageUrl:
-  //     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzHQv_th9wq3ivQ1CVk7UZRxhbPq64oQrg5Q&usqp=CAU",
 });
 
+// Export the Place model, using the placeSchema
 module.exports = mongoose.model("Place", placeSchema);

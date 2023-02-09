@@ -1,21 +1,26 @@
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 
+// Import the required models
 const HttpError = require("../models/http-error");
 const getCoordinatesForAddress = require("../util/location");
 const Place = require("../models/place");
 const User = require("../models/user");
 const Comment = require("../models/comment");
 
+// Import cloudinary for image processing
 const cloudinary = require("../util/cloudinary");
-const { Readable } = require("stream");
 
+// Import ObjectId module from mongodb to be able to use its functionality
 const ObjectId = require("mongodb").ObjectId;
 
+//* getPlaceById function to get a place by its ID
 const getPlaceById = async (req, res, next) => {
+  // Extracts the place ID from the request parameters
   const placeId = req.params.pid;
 
   // Finds place by Id
+  // Gets the place by its ID and populate related comments and creatorId
   let place;
   try {
     place = await Place.findById(placeId)
@@ -29,6 +34,7 @@ const getPlaceById = async (req, res, next) => {
         model: User,
       });
   } catch (err) {
+    // If an error occurs, create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "Something went wrong, could not find place.",
       500
@@ -36,6 +42,8 @@ const getPlaceById = async (req, res, next) => {
     return next(error);
   }
 
+  // If no place is found with the provided ID
+  // Creates a new HttpError with a message and a status code 404 (Not Found) and return it to the next middleware
   if (!place) {
     const error = new HttpError(
       "Could not find a place for the provided Id.",
@@ -44,18 +52,21 @@ const getPlaceById = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns the place data as a response in JSON format
   res.json({ place: place.toObject({ getters: true }) });
 };
 
+//* createPlace function to create a new place
 const createPlace = async (req, res, next) => {
+  // Checks if request contains validation errors
   const errors = validationResult(req);
-
   if (!errors.isEmpty()) {
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
   }
 
+  // Destructures place information from request body
   const { title, description, address, postDate, creatorId, image } = req.body;
 
   // Creates coordinates neccesary for the geolocation used by googleMaps
@@ -66,37 +77,14 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
-  // Saves image in cloudinary
+  // Uploads the image to Cloudinary
   let result;
-  let croppedImage;
-
-  // const bufferUpload = async (buffer) => {
-  //   return new Promise((resolve, reject) => {
-  //     const writeStream = cloudinary.uploader.upload_stream((err, result) => {
-  //       if (err) {
-  //         reject(err);
-  //         return;
-  //       }
-  //       resolve(result);
-  //     });
-  //     const readStream = new Readable({
-  //       read() {
-  //         this.push(buffer);
-  //         this.push(null);
-  //       },
-  //     });
-  //     readStream.pipe(writeStream);
-  //   });
-  // };
-
   try {
     result = await cloudinary.uploader.upload(image, {
       folder: "places",
-      // width: 300,
-      // crop: "scale",
     });
-    // result = await bufferUpload(image);
   } catch (error) {
+    // If an error occurs,  404 (Not Found) and return it to the next middleware
     return next(
       new HttpError(
         "Something went wrong when uploading the image, please try again.",
@@ -105,7 +93,7 @@ const createPlace = async (req, res, next) => {
     );
   }
 
-  // Defines new place's Schema
+  // Creates a new place with the new information
   const createdPlace = new Place({
     title,
     description,
@@ -122,11 +110,12 @@ const createPlace = async (req, res, next) => {
     shareCount: 0,
   });
 
-  // Finds user to enable the creation of a place
+  // Finds the user associated with the place to enable the creation
   let user;
   try {
     user = await User.findById(creatorId);
   } catch (err) {
+    // Create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "It was not possible to create the place, please try again later.",
       500
@@ -134,6 +123,7 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
+  // If no user is found with the provided ID
   if (!user) {
     const error = new HttpError(
       "Could not find user for the provided Id.",
@@ -153,17 +143,10 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
-  // Saves new place from user
+  // Saves new place for user on user's
   try {
-    // const sess = await mongoose.startSession();
-    // sess.startTransaction();
-    // await createdPlace.save({ session: sess, validateModifiedOnly: true });
-
     user.places.push(createdPlace);
     await user.save();
-
-    // await user.save({ session: sess });
-    // await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
       "It was not possible to create the place, please try again later.",
@@ -172,17 +155,23 @@ const createPlace = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns the created place data as a response in JSON format
   res.status(201).json({ place: createdPlace });
 };
 
+//* updateFavorites function to handle adding/removing a place to/from the user's favorites and the place's favoritesUserIds
 const updateFavorites = async (req, res, next) => {
+  // Gets the place ID from the URL parameters and user ID from the request body
   const placeId = req.params.pid;
+  // Gets the user ID from the URL parameters and user ID from the request body
   const { userId } = req.body;
 
+  // Finds place by Id
   let PlaceToCheckFavoritsUserIds;
   try {
     PlaceToCheckFavoritsUserIds = await Place.findById(placeId);
   } catch (err) {
+    // If there's an error fetching the place, return a 500 Internal Server Error and return it to the next middleware
     const error = new HttpError(
       "It was not possible to fetch the user places, please try again later.",
       500
@@ -190,38 +179,50 @@ const updateFavorites = async (req, res, next) => {
     return next(error);
   }
 
+  // If the place doesn't exist, return a 404 Not Found error
   if (!PlaceToCheckFavoritsUserIds) {
     const error = new HttpError("Could not find this place.", 404);
     return next(error);
   }
 
+  // Initializes isFavorite flag to true
   let isFavorite = true;
 
+  // If the place has favoritesUserIds
   if (PlaceToCheckFavoritsUserIds.favoritesUserIds) {
+    // Loops through the favoritesUserIds array to see if the current user has already added this place to their favorites
     let favoritesUser = PlaceToCheckFavoritsUserIds.favoritesUserIds.map(
       async (favorite) => {
-        // console.log(id);
-        console.log(favorite);
+        // If the current user has already added this place to their favorites
         if (favorite == userId) {
+          // Sets isFavorite flag to false
           isFavorite = false;
-          console.log(userId);
+          // Converts the user ID to an ObjectId
           const newUid = new ObjectId(userId);
+          // Removes the place from the user's favorites
           await User.findByIdAndUpdate(newUid, {
             $pull: { favorites: placeId },
           });
+          // Converts the place ID to an ObjectId
           const newPid = new ObjectId(placeId);
+          // Removes the user from the place's favoritesUserIds
           await Place.findByIdAndUpdate(newPid, {
             $pull: { favoritesUserIds: userId },
           });
         }
       }
     );
+    // If the isFavorite flag is still true
     if (isFavorite) {
+      // Converts the user ID to an ObjectId
       const newUid = new ObjectId(userId);
+      // Adds the place to the user's favorites
       await User.findByIdAndUpdate(newUid, {
         $push: { favorites: placeId },
       });
+      // Converts the place ID to an ObjectId
       const newPid = new ObjectId(placeId);
+      // Adds the user to the place's favoritesUserIds
       await Place.findByIdAndUpdate(newPid, {
         $push: { favoritesUserIds: userId },
       });
@@ -231,13 +232,17 @@ const updateFavorites = async (req, res, next) => {
   res.json({ favorite: isFavorite });
 };
 
+//* updateCountShare function to handle CountShare of a specific post
 const updateCountShare = async (req, res, next) => {
+  // Get the place ID from the request parameters
   const placeId = req.params.pid;
 
+  // Finds place by Id
   let PlaceToupdateCountShares;
   try {
     PlaceToupdateCountShares = await Place.findById(placeId);
   } catch (err) {
+    // If there's an error fetching the place, return a 500 Internal Server Error and return it to the next middleware
     const error = new HttpError(
       "It was not possible to fetch the places to update share count, please try again later.",
       500
@@ -245,47 +250,55 @@ const updateCountShare = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns a 404 error if the place was not found
   if (!PlaceToupdateCountShares) {
     const error = new HttpError("Could not find this place.", 404);
     return next(error);
   }
 
+  // Gets the new share count from the request body
   const { newShare } = req.body;
 
+  // Sets a flag to track whether the share count was successfully updated
   let isSharedPost = true;
 
+  // Updates the share count for the place
   PlaceToupdateCountShares.shareCount =
     PlaceToupdateCountShares.shareCount + newShare;
 
-  // Updates place
+  // Saves the updated place
   try {
     await PlaceToupdateCountShares.save();
   } catch (err) {
+    // Sets the flag to false if there was a problem saving the place
     isSharedPost = false;
     const error = new HttpError(
       "Something went wrong, could not update place's share counts.",
       500
     );
-    // console.log(err);
+
     return next(error);
   }
 
+  // Returns a JSON response with the sharePost flag
   res.json({ sharePost: isSharedPost });
 };
 
+//* updatePlace function to update a place
 const updatePlace = async (req, res, next) => {
+  // Checks if request contains validation errors
   const errors = validationResult(req);
-
   if (!errors.isEmpty()) {
-    // console.log(errors);
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
   }
-
+  // Destructures place information from request body
   const { title, description, address, postDate, image } = req.body;
+  // Get the place ID from the request parameters
   const placeId = req.params.pid;
 
+  // Updates the coordinates if the address is different from 'same'
   let coordinates;
   if (address !== "same") {
     // Updates coordinates neccesary for the geolocation used by googleMaps
@@ -296,7 +309,7 @@ const updatePlace = async (req, res, next) => {
     }
   }
 
-  // Finds place to update
+  // Finds the place to update
   let place;
   try {
     place = await Place.findById(placeId);
@@ -308,8 +321,7 @@ const updatePlace = async (req, res, next) => {
     return next(error);
   }
 
-  // Asigns new data to be updated
-
+  // Asigns new data to be updated if the values incoming fron the frontend are different from 'same'
   if (title !== "same") {
     place.title = title;
   }
@@ -321,11 +333,12 @@ const updatePlace = async (req, res, next) => {
     place.location = coordinates;
   }
   if (image !== "same") {
+    // Deletes the existing image if the new image is different
     const ImgId = place.imageUrl.public_id;
     if (ImgId) {
       await cloudinary.uploader.destroy(ImgId);
     }
-
+    // Uploads the new image
     let newImage;
     try {
       newImage = await cloudinary.uploader.upload(image, {
@@ -339,16 +352,17 @@ const updatePlace = async (req, res, next) => {
         )
       );
     }
-
+    // Updates the image URL
     place.imageUrl = {
       public_id: newImage.public_id,
       url: newImage.url,
     };
   }
 
+  // Always changes the postDate to the new date made after the update
   place.postDate = postDate;
 
-  // Updates place
+  // Saves the updated place to the database
   try {
     await place.save();
   } catch (err) {
@@ -356,17 +370,20 @@ const updatePlace = async (req, res, next) => {
       "Something went wrong, could not update place.",
       500
     );
-    // console.log(err);
+
     return next(error);
   }
+
+  // Returns the updated lace in JSON response
   res.status(200).json({ place: place.toObject({ getters: true }) });
 };
 
+//* deletePlace function to delete a place
 const deletePlace = async (req, res, next) => {
+  // Get the placeId from the request parameters
   const placeId = req.params.pid;
+  // Save placeId with a different name for clearer distinction
   const plcid = req.params.pid;
-  // plcid Same as placeId but stored with a different name for a clearer distinction
-  // when comparing with a collection's specific name in this case placeId.
 
   // Finds place to delete
   let place;
@@ -387,12 +404,13 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
+  // If no place is found with the provided ID
   if (!place) {
     const error = new HttpError("Could not find a place for this Id.", 404);
     return next(error);
   }
 
-  // Finds users to delete reference from comments in this place
+  // Find all users who have comments on this place
   let retreivedUsersToDelete;
   try {
     retreivedUsersToDelete = await User.find({})
@@ -413,17 +431,13 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
-  // Selects user and comments from said user to remove from this specific place
-  // If user owns the place it deletes this place from the user as well
+  // Delete references to this place from all users
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
-    // console.log("user" + user);
-
+    // Delete reference to this place from the user's favorites
     let favoritesFromUserToDelete = user.favorites.map(async (favorite) => {
-      // console.log("fav" + favorite);
       if (user.favorites) {
         let favoritePlacesToDelete = favorite.favoritesUserIds.map(
           async (id) => {
-            // console.log("fav id" + id);
             if (favorite._id == plcid) {
               await user.favorites.remove(plcid);
             }
@@ -431,17 +445,15 @@ const deletePlace = async (req, res, next) => {
         );
       }
     });
+
+    // Delete comments from this place made by this user
     if (user.comments) {
       let commentFromUserToDelete = user.comments.map(async (comment) => {
-        // console.log("fcom" + comment);
         if (comment.placeId == plcid) {
-          // await user.comments.remove(comment);
           const newUid = new ObjectId(user._id);
           await User.findByIdAndUpdate(newUid, {
             $pull: { comments: comment },
           });
-          // await user.places.remove(plcid);
-
           await User.findByIdAndUpdate(newUid, {
             $pull: { places: placeId },
           });
@@ -449,8 +461,7 @@ const deletePlace = async (req, res, next) => {
       });
     }
 
-    // console.log("userfa" + user.favorites);
-
+    // Save changes to each user
     await user.save().catch((err) => {
       const error = new HttpError(
         "Something went wrong, could not delete comments from owners of the place.",
@@ -480,9 +491,6 @@ const deletePlace = async (req, res, next) => {
   // Deletes comments from this place
   let commentsToDelete = retreivedCommentsToDelete.map(async (comment) => {
     if (comment.placeId._id == plcid) {
-      // let commentFromUserToDelete = comment.placeId.comments.map(async (id) => {
-      //   // await place.comments.remove(id);
-      // });
       await comment.deleteOne({ _id: comment._id });
     }
   });
@@ -492,9 +500,9 @@ const deletePlace = async (req, res, next) => {
   try {
     //Deletes the image from cloduinary
     const ImgId = place.imageUrl.public_id;
-
     await cloudinary.uploader.destroy(ImgId);
 
+    //! using the old method to remove references (later on the newest version of doing this is used)
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await place.remove({ session: sess, validateModifiedOnly: true });
@@ -502,26 +510,31 @@ const deletePlace = async (req, res, next) => {
     await place.creatorId.save({ session: sess });
     await sess.commitTransaction();
 
+    // Finally after all references are removed the places is deleted
     await place.deleteOne({ places: place.creatorId });
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete the place.",
       500
     );
-    console.log(err);
+
     return next(error);
   }
 
+  // Returns a message saying the places was successfully deleted
   res.status(200).json({ message: "The place was deleted." });
 };
 
-//////////////////// Comments Section ////////////////////
+//* Comments Section /////////////////////////////////
 
+//* createComment function to a create a comment for a specific place
 const createComment = async (req, res, next) => {
+  // Gets the place ID from the request parameters
   const placeId = req.params.pid;
 
+  // Checks for validation errors
   const errors = validationResult(req);
-
+  // If there are errors, return a new error with a message and a status code of 422 (Unprocessable Entity)
   if (!errors.isEmpty()) {
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
@@ -533,6 +546,7 @@ const createComment = async (req, res, next) => {
   try {
     place = await Place.findById(placeId);
   } catch (err) {
+    // If there's an error, return a new error with a message and a status code of 500 (Internal Server Error)
     const error = new HttpError(
       "Something went wrong, could not find a place.",
       500
@@ -540,6 +554,7 @@ const createComment = async (req, res, next) => {
     return next(error);
   }
 
+  // If the place is not found, return a new error with a message and a status code of 404 (Not Found)
   if (!place) {
     const error = new HttpError(
       "Could not find a place for the provided Id.",
@@ -548,9 +563,10 @@ const createComment = async (req, res, next) => {
     return next(error);
   }
 
+  // Gets the comment text, post comment date, and creator ID from the request body
   const { commentText, postCommentDate, creatorId } = req.body;
 
-  // Defines new comment's Schema
+  // Defines a new comment using the Comment schema
   const createdComment = new Comment({
     commentText,
     postCommentDate,
@@ -563,6 +579,7 @@ const createComment = async (req, res, next) => {
   try {
     user = await User.findById(creatorId);
   } catch (err) {
+    // If there's an error, return a new error with a message and a status code of 500 (Internal Server Error)
     const error = new HttpError(
       "It was not possible to create the comment, please try again later.",
       500
@@ -570,6 +587,7 @@ const createComment = async (req, res, next) => {
     return next(error);
   }
 
+  // If the user is not found, return a new error with a message and a status code of 404 (Not Found)
   if (!user) {
     const error = new HttpError(
       "Could not find a user for the provided Id.",
@@ -582,6 +600,7 @@ const createComment = async (req, res, next) => {
   try {
     createdComment.save();
   } catch (err) {
+    // If there's an error, return a new error with a message and a status code of 500 (Internal Server Error)
     const error = new HttpError(
       "It was not possible to create the comment, please try again later.",
       500
@@ -591,17 +610,10 @@ const createComment = async (req, res, next) => {
 
   // Saves new comment for this place
   try {
-    // const sess = await mongoose.startSession();
-    // sess.startTransaction();
-    // await createdComment.save({ session: sess, validateModifiedOnly: true });
-
     place.comments.push(createdComment);
     await place.save();
-
-    // place.comments.push(createdComment);
-    // await place.save({ session: sess });
-    // await sess.commitTransaction();
   } catch (err) {
+    // If there's an error, return a new error with a message and a status code of 500 (Internal Server Error)
     const error = new HttpError(
       "Something went wrong, could not create the comment for the place.",
       500
@@ -611,17 +623,10 @@ const createComment = async (req, res, next) => {
 
   // Saves new comment from user
   try {
-    // const sess = await mongoose.startSession();
-    // sess.startTransaction();
-    // await createdComment.save({ session: sess, validateModifiedOnly: true });
-
     user.comments.push(createdComment);
     await user.save();
-
-    // user.comments.push(createdComment);
-    // await user.save({ session: sess });
-    // await sess.commitTransaction();
   } catch (err) {
+    // If there's an error, return a new error with a message and a status code of 500 (Internal Server Error)
     const error = new HttpError(
       "It was not possible to create the comment, please try again later.",
       500
@@ -629,19 +634,24 @@ const createComment = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns the comment in JSON format
   res.status(201).json({ comment: createdComment });
 };
 
+//* updateComment function to update a comment for a specific place
 const updateComment = async (req, res, next) => {
+  // Check if there are any validation errors
   const errors = validationResult(req);
-
+  // Return error if there are any validation errors
   if (!errors.isEmpty()) {
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
   }
 
+  // Get the comment data from the request body
   const { commentText, postCommentDate } = req.body;
+  // Get the comment ID from the request parameters
   const commentId = req.params.cid;
 
   // Finds comment to update
@@ -656,7 +666,7 @@ const updateComment = async (req, res, next) => {
     return next(error);
   }
 
-  // Asigns new data to be updated
+  // Asigns new data for the comment to beupdated
   comment.commentText = commentText;
   comment.postCommentDate = postCommentDate;
 
@@ -664,6 +674,7 @@ const updateComment = async (req, res, next) => {
   try {
     await comment.save();
   } catch (err) {
+    // Return error if the comment could not be updated
     const error = new HttpError(
       "Something went wrong, could not update comment.",
       500
@@ -671,15 +682,17 @@ const updateComment = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns the comment in JSON format
   res.status(200).json({ comment: comment.toObject({ getters: true }) });
 };
 
+//* deleteComment function to delete a comment for a specific place
 const deleteComment = async (req, res, next) => {
+  // Get the placeId from the request parameters
   const placeId = req.params.pid;
+  // Save placeId with a different name for clearer distinction
   const plcid = req.params.pid;
-  // plcid Same as placeId but stored with a different name for a clearer distinction
-  // when comparing with a collection's specific name in this case placeId.
-
+  // CommentId in the url parameters
   const commentId = req.params.cid;
 
   // Finds place to update comments in said place
@@ -696,7 +709,7 @@ const deleteComment = async (req, res, next) => {
     );
     return next(error);
   }
-
+  // If no place is found with the provided ID
   if (!place) {
     const error = new HttpError("Could not find a place for this Id.", 404);
     return next(error);
@@ -717,6 +730,7 @@ const deleteComment = async (req, res, next) => {
     return next(error);
   }
 
+  // If no comment is found with the provided ID
   if (!comment) {
     const error = new HttpError("Could not find a comment for this Id.", 404);
     return next(error);
@@ -737,12 +751,13 @@ const deleteComment = async (req, res, next) => {
     return next(error);
   }
 
+  // If no user is found with the provided ID
   if (!commentUser) {
     const error = new HttpError("Could not find a comment for this Id.", 404);
     return next(error);
   }
 
-  // Checks if comment belongs to the place in which we want to delete said comment and removes it from the place
+  // Checks if comment belongs to the place in which we want to delete said comment and remove it from the place
   if (comment.placeId._id == plcid) {
     let updatePlaceComments = comment.placeId.comments.map(async (id) => {
       if (id == commentId) {
@@ -770,7 +785,7 @@ const deleteComment = async (req, res, next) => {
       return next(error);
     }
 
-    // Updates place's comments and delete comment
+    // Updates place's comments and deletes comment
     try {
       await comment.deleteOne({ _id: commentId });
       await place.save();
@@ -783,6 +798,7 @@ const deleteComment = async (req, res, next) => {
     }
   }
 
+  // Returns a message saying the places was successfully deleted
   res.status(200).json({ message: "The comment was deleted." });
 };
 

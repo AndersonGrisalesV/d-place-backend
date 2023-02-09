@@ -2,37 +2,45 @@ require("dotenv").config();
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 
+// Import the required models
 const HttpError = require("../models/http-error");
 const User = require("../models/user");
 const Place = require("../models/place");
 const Comment = require("../models/comment");
 
+// Import cloudinary for image processing
 const cloudinary = require("../util/cloudinary");
 
+// Import the uuid library for generating unique ids
 const { v4: uuidv4 } = require("uuid");
 
+// Import ObjectId module from mongodb to be able to use its functionality
 const ObjectId = require("mongodb").ObjectId;
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+//* getAllUsers function to get all users
 const getAllUsers = async (req, res, next) => {
   // Finds all users of the website
   let users;
   try {
     users = await User.find({}, "-password -confirmPassword");
   } catch (err) {
+    // If an error occurs, create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "It was not possible to fetch all users, please try again later.",
       500
     );
     return next(error);
   }
-
+  // Returns the place data as a response in JSON format
   res.json({ users: users.map((user) => user.toObject({ getters: true })) });
 };
 
+//* getUserById function to get a user by its ID
 const getUserById = async (req, res, next) => {
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
   // Finds user by Id
@@ -40,6 +48,7 @@ const getUserById = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
+    // If an error occurs, create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "Something went wrong, could not find user.",
       500
@@ -47,6 +56,8 @@ const getUserById = async (req, res, next) => {
     return next(error);
   }
 
+  // If no user is found with the provided ID
+  // Creates a new HttpError with a message and a status code 404 (Not Found) and return it to the next middleware
   if (!user) {
     const error = new HttpError(
       "Could not find a user for the provided Id.",
@@ -55,14 +66,17 @@ const getUserById = async (req, res, next) => {
     return next(error);
   }
 
+  // Returns the user data as a response in JSON format
   res.json({ user: user.toObject({ getters: true }) });
 };
 
+//* getPlacesByUserId function to get the places has created by its ID
 const getPlacesByUserId = async (req, res, next) => {
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
-  // const { userId } = req.body;
   // Finds user places
+  // Gets the places by user ID and populate related user (creatorId)
   let userWithPlaces;
   try {
     userWithPlaces = await User.findById(userId).populate({
@@ -71,6 +85,7 @@ const getPlacesByUserId = async (req, res, next) => {
       populate: { path: "creatorId" },
     });
   } catch (err) {
+    // If an error occurs, create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "It was not possible to fetch the user places, please try again later.",
       500
@@ -78,13 +93,15 @@ const getPlacesByUserId = async (req, res, next) => {
     return next(error);
   }
 
-  // console.log(userWithPlaces.places.length);
+  // If no places are found or there aren't any with the provided ID
+  // Creates a new HttpError with a message and a status code 404 (Not Found) and return it to the next middleware
   if (!userWithPlaces || userWithPlaces.places.length === 0) {
     return next(
       new HttpError("Could not find places for the provided user Id.", 404)
     );
   }
 
+  // Returns the places data as a response in JSON format
   res.json({
     places: userWithPlaces.places.map((place) =>
       place.toObject({ getters: true })
@@ -92,21 +109,22 @@ const getPlacesByUserId = async (req, res, next) => {
   });
 };
 
+//* getFavoritePlacesByUserId function to get the favorite places of a user by its ID
 const getFavoritePlacesByUserId = async (req, res, next) => {
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
   // Finds user favorite places if user has it(them) as favorite
+  // Gets the places by user ID and populate related user (creatorId)
   let userWithFavoritePlaces;
   try {
     userWithFavoritePlaces = await User.findById(userId).populate({
       path: "favorites",
       model: Place,
       populate: { path: "creatorId" },
-      // populate: { path: "comments" },
     });
-
-    console.log(userWithFavoritePlaces);
   } catch (err) {
+    // If an error occurs, create a new HttpError with a message and a status code 500 (Internal Server Error) and return it to the next middleware
     const error = new HttpError(
       "It was not possible to fecth favorite user places, please try again later.",
       500
@@ -114,6 +132,8 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
     return next(error);
   }
 
+  // If no places are found or there aren't any with the provided ID
+  // Creates a new HttpError with a message and a status code 404 (Not Found) and return it to the next middleware
   if (
     !userWithFavoritePlaces ||
     userWithFavoritePlaces.favorites.length === 0
@@ -126,6 +146,7 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
     );
   }
 
+  // Returns the places data as a response in JSON format
   res.json({
     places: userWithFavoritePlaces.favorites.map((place) =>
       place.toObject({ getters: true })
@@ -133,22 +154,27 @@ const getFavoritePlacesByUserId = async (req, res, next) => {
   });
 };
 
+// Sign up function to signup a user
 const signup = async (req, res, next) => {
+  // Check if there are errors from the validation middleware
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    // If there are errors, return a custom error message with a 422 status code
     return next(
       new HttpError("Invalid inputs passed, please check your data.", 422)
     );
   }
 
+  // Destructure the input data from the request body
   const { name, email, notification, password, confirmPassword, theme, image } =
     req.body;
 
-  // Finds if user already exists by email
+  // Find if user already exists with the given email
   let existingUser;
   try {
     existingUser = await User.findOne({ email: email });
   } catch (err) {
+    // If there is an error while checking for existing user, return a custom error message with a 500 status code
     const error = new HttpError(
       "Signing up failed, please try again later.",
       500
@@ -156,6 +182,7 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  // If user with the given email already exists, return a custom error message with a 422 status code
   if (existingUser) {
     const error = new HttpError(
       "User already exists, please login instead.",
@@ -164,17 +191,15 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  // If an image is provided, upload the image to Cloudinary
   let result;
-
   if (image !== "") {
     try {
       result = await cloudinary.uploader.upload(image, {
         folder: "ProfilePictures",
-        // width: 300,
-        // crop: "scale",
       });
-      // result = await bufferUpload(image);
     } catch (error) {
+      // If there is an error uploading the image, return a custom error message with a 400 status code
       return next(
         new HttpError(
           "Something went wrong when uploading the image, please try again.",
@@ -184,10 +209,12 @@ const signup = async (req, res, next) => {
     }
   }
 
+  // Hash the password
   let hashedPassword;
   try {
     hashedPassword = await bcrypt.hash(password, 12);
   } catch (err) {
+    // If there is an error while hashing the password, return a custom error message with a 500 status code
     const error = new HttpError(
       "Could not create user, please try again.",
       500
@@ -195,7 +222,7 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
-  // Defines new user's Schema
+  // Define the schema for the new user
   const createdUser = new User({
     name,
     email,
@@ -216,10 +243,12 @@ const signup = async (req, res, next) => {
   try {
     await createdUser.save();
   } catch (err) {
+    // If there is an error while saving the user, return a custom error message with a 500 status code
     const error = new HttpError("Signing up failed, please try again.", 500);
     return next(error);
   }
 
+  // Sign the JWT token using userId and email
   let token;
   try {
     token = jwt.sign(
@@ -228,20 +257,16 @@ const signup = async (req, res, next) => {
       { expiresIn: "1h" }
     );
   } catch (err) {
+    // Handle the error if JWT signing failed
     const error = new HttpError("Signing up failed, please try again.", 500);
 
     return next(error);
   }
 
-  //   createdUser.prototype.toJSON = function () {
-  //   const values = {
-  //     ..._.omit(this.get(), ["password"], ["confirmPassword"]),
-  //   };
-
-  //   return values;
-  // };
-
+  // Set the user's theme preference as a cookie
   res.cookie("theme", createdUser.themePreference);
+
+  // Return the successful response to the client with the JWT token, user information, and message
   res.status(201).json({
     message: "Welcome",
     user: createdUser.toObject({ getters: true }),
@@ -251,14 +276,17 @@ const signup = async (req, res, next) => {
   });
 };
 
+//* login function to login a user
 const login = async (req, res, next) => {
+  // Destructuring email and password from request body
   const { email, password } = req.body;
 
-  // Finds if user already exists
+  // Finds if user already exists by email
   let existingUser;
   try {
     existingUser = await User.findOne({ email: email });
   } catch (err) {
+    // If there is an error in the database, returns a 500 error with message
     const error = new HttpError(
       "Logging in failed, please try again later.",
       500
@@ -266,15 +294,18 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
+  // If the user does not exist, returns a 401 error with message
   if (!existingUser) {
     const error = new HttpError("Invalid Email or Password, try again.", 401);
     return next(error);
   }
 
+  // Compares the provided password with the password stored in the database
   let isValidPassword = false;
   try {
     isValidPassword = await bcrypt.compare(password, existingUser.password);
   } catch (err) {
+    // If there is an error in comparing passwords, returns a 500 error with message
     const error = new HttpError(
       "Could not log you in, please check your credentials and try again.",
       500
@@ -282,6 +313,7 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
+  // If the passwords do not match, returns a 401 error with message
   if (!isValidPassword) {
     const error = new HttpError(
       "Invalid credentials, could not log you in.",
@@ -290,6 +322,7 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
+  // If the passwords match, creates a JSON Web Token for authentication
   let token;
   try {
     token = jwt.sign(
@@ -301,14 +334,12 @@ const login = async (req, res, next) => {
       { expiresIn: "1h" }
     );
   } catch (err) {
+    // If there is an error in creating the token, returns a 500 error with message
     const error = new HttpError("Logging in failed, please try again.", 500);
-
     return next(error);
   }
 
-  // res.cookie("rememberme", "1", { maxAge: 900000, httpOnly: false });
-  // res.send();
-
+  // Sends a success response to the client with the user information and JWT
   res.json({
     message: "Welcome back",
     user: existingUser.toObject({ getters: true }),
@@ -318,18 +349,13 @@ const login = async (req, res, next) => {
   });
 };
 
+//* updateProfile function to update a user profile
 const updateProfile = async (req, res, next) => {
-  const errors = validationResult(req);
-
-  // if (!errors.isEmpty()) {
-  //   console.log(errors);
-  //   return next(
-  //     new HttpError("Invalid inputs passed, please check your data.", 422)
-  //   );
-  // }
-
+  // Destructure the data from the request body
   const { name, email, oldPassword, password, confirmPassword, image } =
     req.body;
+
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
   // Finds user to update
@@ -337,6 +363,7 @@ const updateProfile = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
+    // Return error if there was a problem finding the user
     const error = new HttpError(
       "Something went wrong, could not update profile.",
       500
@@ -344,7 +371,7 @@ const updateProfile = async (req, res, next) => {
     return next(error);
   }
 
-  // Asigns new data to be updated
+  // Asigns new data to be updated if the values incoming fron the frontend are different from 'same'
   let hashedPassword;
   if (name !== "same") {
     user.name = name;
@@ -357,6 +384,7 @@ const updateProfile = async (req, res, next) => {
     try {
       isValidPassword = await bcrypt.compare(oldPassword, user.password);
     } catch (err) {
+      // Return error if there was a problem comparing the password
       const error = new HttpError(
         "Please check your credentials and try again.",
         500
@@ -364,6 +392,7 @@ const updateProfile = async (req, res, next) => {
       return next(error);
     }
 
+    // Check if the old password is correct
     if (!isValidPassword) {
       const error = new HttpError(
         "Please check your credentials and try again.",
@@ -372,22 +401,25 @@ const updateProfile = async (req, res, next) => {
       return next(error);
     }
 
+    // Hash the new password
     try {
       hashedPassword = await bcrypt.hash(password, 12);
     } catch (err) {
+      // Return error if there was a problem hashing the password
       const error = new HttpError(
         "Could not create new passwrod for the user, please try again.",
         500
       );
       return next(error);
     }
-
+    // Assigns the new password
     user.password = hashedPassword;
   }
   if (confirmPassword !== "same") {
     user.confirmPassword = hashedPassword;
   }
 
+  // Delete the current image if the user wants to update it
   if (image !== "same" && image !== "noImage") {
     const ImgId = user.imageUrl.public_id;
     if (ImgId) {
@@ -395,6 +427,7 @@ const updateProfile = async (req, res, next) => {
     }
   }
 
+  // Upload the new image
   let newImage;
   if (image !== "same" && image !== "noImage") {
     try {
@@ -402,6 +435,7 @@ const updateProfile = async (req, res, next) => {
         folder: "ProfilePictures",
       });
     } catch (error) {
+      // Return error if there was a problem uploading the image
       return next(
         new HttpError(
           "Something went wrong when uploading the image, please try again.",
@@ -411,51 +445,66 @@ const updateProfile = async (req, res, next) => {
     }
   }
 
+  // Check if the new image is different from the previous one or not selected
   if (image !== "same" && image !== "noImage") {
+    // Set the new image URL if different
     user.imageUrl = {
       public_id: newImage.public_id,
       url: newImage.url,
     };
   }
 
+  // Check if the user wants to remove the previous image
   if (image === "noImage") {
+    // Get the public id of the previous image
     const ImgId = user.imageUrl.public_id;
+    // If the previous image exists
     if (ImgId) {
+      // Delete the previous image
       await cloudinary.uploader.destroy(ImgId);
     }
   }
 
+  // Check if the user doesn't want to add a new image
   if (image === "noImage") {
+    // Set the image URL as empty
     user.imageUrl = {
       public_id: uuidv4(),
       url: "",
     };
   }
 
-  // Updates place
+  // Save the updated user information
   try {
     await user.save();
   } catch (err) {
+    // If there is an error, return a 500 Internal Server Error response with a message
     const error = new HttpError(
       "Something went wrong, could not update place.",
       500
     );
-    // console.log(err);
+
     return next(error);
   }
+
+  // Return a 200 OK response with the updated user information
   res.status(200).json({ user: user.toObject({ getters: true }) });
 };
 
+//* updateModePreference function to update a user's theme preference
 const updateModePreference = async (req, res, next) => {
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
+  // Destructures the data from the request body
   const { theme } = req.body;
 
-  // Finds user to update theme
+  // FindS user by Id to update the theme preference
   let user;
   try {
     user = await User.findById(userId);
   } catch (err) {
+    // If there is any error while finding the user, return a 500 error with appropriate message
     const error = new HttpError(
       "Something went wrong, could not update theme preference.",
       500
@@ -463,38 +512,47 @@ const updateModePreference = async (req, res, next) => {
     return next(error);
   }
 
+  // Checks if the user was found
   if (!user) {
+    // Returns a 404 error if user was not found
     const error = new HttpError("Could not find this user.", 404);
     return next(error);
   }
 
+  // Updates the theme preference of the user
   user.themePreference = theme;
 
-  // Updates place
+  // Updates user
   try {
     await user.save();
   } catch (err) {
+    // if there is an error while saving the user, return a 500 error with appropriate message
     const error = new HttpError(
       "Something went wrong, could not update p theme preference.",
       500
     );
-    // console.log(err);
+
     return next(error);
   }
 
+  // Returns success message
   res.json({ message: "Theme preference successfully changed" });
 };
 
+//* updateNotification function updates the viewed notification status of a user
 const updateNotification = async (req, res, next) => {
+  // Extracts the user ID from the request parameters
   const userId = req.params.uid;
 
+  // Destructures the data from the request body
   const { notification } = req.body;
 
-  // Finds user to update theme
+  // Finds user by Id to update the viewed notification status
   let user;
   try {
     user = await User.findById(userId);
   } catch (err) {
+    // If there is any error while finding the user, return a 500 error with appropriate message
     const error = new HttpError(
       "Something went wrong, could not update viewed notification.",
       500
@@ -502,30 +560,37 @@ const updateNotification = async (req, res, next) => {
     return next(error);
   }
 
+  // Checks if the user was found
   if (!user) {
+    // Returns a 404 error if user was not found
     const error = new HttpError("Could not find this user.", 404);
     return next(error);
   }
 
+  // Updates the viewed notification status of the user
   user.viewedNotification = notification;
 
-  // Updates place
+  // Updates user
   try {
     await user.save();
   } catch (err) {
+    // If there is an error while saving the user, return a 500 error with appropriate message
     const error = new HttpError(
       "Something went wrong, could not update p theme preference.",
       500
     );
-    // console.log(err);
+
     return next(error);
   }
 
+  // Returns success message
   res.json({ message: "Viewed notification successfully updated" });
 };
 
+//* updateUserNotification function updates the viewed notification status of a user (this function updates the viewedNotification property of all users)
 const updateUserNotification = async (req, res, next) => {
-  // Finds all users of the website
+  // Finds all users
+  // Finds all users but exclude password, confirmPassword, comments, places, favorites, themePreference, imageUrl, name and email
   let users;
   try {
     users = await User.find(
@@ -533,6 +598,7 @@ const updateUserNotification = async (req, res, next) => {
       "-password -confirmPassword -comments -places -favorites -themePreference -imageUrl -name -email"
     );
   } catch (err) {
+    // If it was not possible to fetch all users, returns an error with a message and a 500 status code
     const error = new HttpError(
       "It was not possible to fetch all users, please try again later.",
       500
@@ -540,7 +606,9 @@ const updateUserNotification = async (req, res, next) => {
     return next(error);
   }
 
+  // If no users are found
   if (!users) {
+    // If no users were found, returns an error with a message and a 404 status code
     const error = new HttpError(
       "Could not find users to update notifications.",
       404
@@ -548,41 +616,29 @@ const updateUserNotification = async (req, res, next) => {
     return next(error);
   }
 
+  // Maps all users to updated the viewedNotification value
   let usersToUpdate = users.map(async (user) => {
-    // console.log(user.favorites);
-
     if (!user.viewedNotification) {
       try {
+        // Creates a new ObjectId from the user id
         const newUid = new ObjectId(user._id);
+        // Finds the user by its id and updates the viewedNotification property to true
         await User.findByIdAndUpdate(newUid, {
           $set: { viewedNotification: true },
         });
       } catch (err) {
+        // If something went wrong updating the users viewed notification, returns an error with a message and a 500 status code
         const error = new HttpError(
           "Something went wrong, could not update users viewed notification.",
           500
         );
-        console.log(err);
+
         return next(error);
       }
-
-      // await user.places.remove(place);
-      // await Place.deleteOne({ _id: id });
     }
   });
 
-  // // Updates place
-  // try {
-  //   await user.save();
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     "Something went wrong, could not update p theme preference.",
-  //     500
-  //   );
-  //   // console.log(err);
-  //   return next(error);
-  // }
-
+  // Returns a success message with a 200 status code
   res.json({ message: "Viewed user notification successfully updated" });
 };
 
@@ -631,7 +687,6 @@ const deleteProfile = async (req, res, next) => {
     const error = new HttpError("This user no longer exists.", 404);
     return next(error);
   }
-  // console.log(userPlaces);
 
   let retreivedUsersToDelete;
   try {
@@ -644,7 +699,7 @@ const deleteProfile = async (req, res, next) => {
       "Something went wrong, could not find comments from owners of places to delete.",
       500
     );
-    console.log(err);
+
     return next(error);
   }
 
@@ -671,7 +726,6 @@ const deleteProfile = async (req, res, next) => {
   let placesAndCommentToDelete = places.map(async (place) => {
     let count = 0;
     let allCommentsFromPost = false;
-    // console.log(place.creatorId);
 
     if (place.creatorId._id == userId) {
       allCommentsFromPost = true;
@@ -681,16 +735,15 @@ const deleteProfile = async (req, res, next) => {
       let imageId = place.imageUrl.public_id;
       imageIdsToDelete = [...imageIdsToDelete, imageId];
 
-      // await cloudinary.uploader.destroy(imageId);
+      await cloudinary.uploader.destroy(imageId);
     }
 
     if (place.comments) {
       let CommetsFromPlacesToDelete = place.comments.map(async (comment) => {
-        // console.log(comment.creatorId._id);
         if (comment.creatorId._id == userId || place.creatorId._id == userId) {
           let commentId = [comment._id];
           commentsToDelete = [...commentsToDelete, ...commentId];
-          // console.log(comment.creatorId._id);
+
           const newId = new ObjectId(place._id);
           await Place.findByIdAndUpdate(newId, {
             $pull: { comments: comment },
@@ -709,66 +762,20 @@ const deleteProfile = async (req, res, next) => {
             await Place.findByIdAndUpdate(newId, {
               $pull: { favoritesUserIds: favorite },
             });
-            //await place.favoritesUserIds.remove(userId);
           }
         });
     }
   });
 
-  // Finds comment to update
-  // let filteredPlacesToDelete;
-  // try {
-  //   filteredPlacesToDelete = await Place.find({
-  //     _id: { $in: [...placesToDelete] },
-  //   });
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     "Something went wrong, could not retrieve places to delete.",
-  //     500
-  //   );
-  //   return next(error);
-  // }
-
-  // let comments;
-  // try {
-  //   comments = await Comment.find({ _id: { $in: [...commentsToDelete] } });
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     "Something went wrong, could not retrieve comments.",
-  //     500
-  //   );
-  //   return next(error);
-  // }
-
-  console.log(commentsToDelete);
-
-  // let allComments = comments.map(async (comment) => {
-  // console.log(comment);
-  // await comment.deleteOne({ _id: comment._id }).catch((err) => {
-  //   const error = new HttpError(
-  //     "Something went wrong, could not delete comments from the users places.",
-  //     500
-  //   );
-  //   return next(error);
-  // });
-
-  // await comment.remove(comment._id);
-  // });
-
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
-    // console.log(user.favorites);
-
     if (user.places) {
       let placeFromUserToDelete = user.places.map(async (place) => {
         let placesDeleted = placesToDelete.map(async (id) => {
           if ((place = id)) {
-            // console.log(id);
             const newUid = new ObjectId(user._id);
             await User.findByIdAndUpdate(newUid, {
               $pull: { places: place },
             });
-            // await user.places.remove(place);
-            // await Place.deleteOne({ _id: id });
           }
         });
       });
@@ -777,14 +784,11 @@ const deleteProfile = async (req, res, next) => {
     if (user.favorites) {
       let favoritesUser = user.favorites.map(async (favorite) => {
         let favoritesDeleted = placesToDelete.map(async (id) => {
-          // console.log(id);
           if ((favorite = id) || user._id == userId) {
-            console.log(favorite);
             const newUid = new ObjectId(user._id);
             await User.findByIdAndUpdate(newUid, {
               $pull: { favorites: favorite },
             });
-            // await user.favorites.remove(favorite);
           }
         });
       });
@@ -793,14 +797,11 @@ const deleteProfile = async (req, res, next) => {
     // if (user.comments) {
     let commentFromUserToDelete = user.comments.map(async (comment) => {
       let commentsDeleted = commentsToDelete.map(async (id) => {
-        // console.log(comment);
         if ((comment._id = id)) {
-          console.log(id);
           const newUid = new ObjectId(user._id);
           await User.findByIdAndUpdate(newUid, {
             $pull: { comments: comment },
           });
-          // await user.comments.remove(comment);
         }
       });
     });
@@ -819,12 +820,12 @@ const deleteProfile = async (req, res, next) => {
       "Something went wrong, could not delete the profile.",
       500
     );
-    console.log(err);
+
     return next(error);
   }
 
   // let allPlaces = filteredPlacesToDelete.map(async (place) => {
-  //   // console.log(place);
+
   //   await place.deleteOne({ _id: place._id });
   // });
 
