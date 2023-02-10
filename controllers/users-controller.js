@@ -642,12 +642,12 @@ const updateUserNotification = async (req, res, next) => {
   res.json({ message: "Viewed user notification successfully updated" });
 };
 
+//* deleteProfile function to delete a user's profile
 const deleteProfile = async (req, res, next) => {
+  // Get the user ID from the request parameters
   const userId = req.params.uid;
-  // plcid Same as placeId but stored with a different name for a clearer distinction
-  // when comparing with a collection's specific name in this case placeId.
 
-  // Finds comment to update
+  // Retrieve all places and their associated comments and creators
   let places;
   try {
     places = await Place.find({})
@@ -667,7 +667,7 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
-  // Finds user places
+  // Retrieve the user's places
   let userPlaces;
   try {
     userPlaces = await User.findById(userId).populate({
@@ -683,11 +683,13 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
+  // If the user doesn't exist, return an error
   if (!userPlaces) {
     const error = new HttpError("This user no longer exists.", 404);
     return next(error);
   }
 
+  // Retrieve all users and their associated comments
   let retreivedUsersToDelete;
   try {
     retreivedUsersToDelete = await User.find({}).populate({
@@ -703,11 +705,13 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
+  // Store the public ID of the user's profile picture
   let profilePictureToDelete;
   if (userPlaces.imageUrl.public_id) {
     profilePictureToDelete = userPlaces.imageUrl.public_id;
   }
 
+  // Retrieve all comments
   let toDeleteComments;
   try {
     toDeleteComments = await Comment.find({});
@@ -719,31 +723,34 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
-  let placesToDelete = []; //also remove from users favorites
-  let commentsToDelete = []; //also remove from users comments
-  let imageIdsToDelete = []; //also remove from users comments
+  // Arrays to store the IDs of places, comments, and images to delete
+  let placesToDelete = []; // Also remove from users favorites
+  let commentsToDelete = []; // Also remove from users comments
+  let imageIdsToDelete = []; // Also remove from users comments
 
+  // Loop through each place to determine which places, comments, and images to delete
   let placesAndCommentToDelete = places.map(async (place) => {
     let count = 0;
     let allCommentsFromPost = false;
 
+    // If the place was created by the user, add its ID to the placesToDelete array
     if (place.creatorId._id == userId) {
       allCommentsFromPost = true;
       let placeId = [place._id];
       placesToDelete = [...placesToDelete, ...placeId];
 
-      let imageId = place.imageUrl.public_id;
-      imageIdsToDelete = [...imageIdsToDelete, imageId];
-
-      await cloudinary.uploader.destroy(imageId);
+      // Stores the public ID's of the place's to be deleted
+      let imageId = [place.imageUrl.public_id];
+      imageIdsToDelete = [...imageIdsToDelete, ...imageId];
     }
 
+    // Loop through comments in the place and delete the comments created by the user
     if (place.comments) {
       let CommetsFromPlacesToDelete = place.comments.map(async (comment) => {
         if (comment.creatorId._id == userId || place.creatorId._id == userId) {
           let commentId = [comment._id];
           commentsToDelete = [...commentsToDelete, ...commentId];
-
+          // Find the place by its id and update it to remove the comment
           const newId = new ObjectId(place._id);
           await Place.findByIdAndUpdate(newId, {
             $pull: { comments: comment },
@@ -754,10 +761,12 @@ const deleteProfile = async (req, res, next) => {
       });
     }
 
+    // Loop through the favorites in the place and delete the favorites of the user
     if (place.favoritesUserIds) {
       let CommetsFavoritesUserIdsFromPlacesToDelete =
         place.favoritesUserIds.map(async (favorite) => {
           if (favorite == userId) {
+            // Find the place by its id and update it to remove the favorite of the user
             const newId = new ObjectId(place._id);
             await Place.findByIdAndUpdate(newId, {
               $pull: { favoritesUserIds: favorite },
@@ -767,11 +776,14 @@ const deleteProfile = async (req, res, next) => {
     }
   });
 
+  // For each user, loop through all of its associated places
   let usersToDelete = retreivedUsersToDelete.map(async (user) => {
     if (user.places) {
       let placeFromUserToDelete = user.places.map(async (place) => {
         let placesDeleted = placesToDelete.map(async (id) => {
+          // Check if the place to be deleted matches the current place
           if ((place = id)) {
+            // If match found, remove the place from the user's places array
             const newUid = new ObjectId(user._id);
             await User.findByIdAndUpdate(newUid, {
               $pull: { places: place },
@@ -781,10 +793,14 @@ const deleteProfile = async (req, res, next) => {
       });
     }
 
+    // For each user, loop through all of its associated favorites
     if (user.favorites) {
       let favoritesUser = user.favorites.map(async (favorite) => {
         let favoritesDeleted = placesToDelete.map(async (id) => {
+          // Check if the place to be deleted matches the current favorite
+          // or check if the user being deleted is the current user
           if ((favorite = id) || user._id == userId) {
+            // If match found, remove the place from the user's favorites array
             const newUid = new ObjectId(user._id);
             await User.findByIdAndUpdate(newUid, {
               $pull: { favorites: favorite },
@@ -794,28 +810,38 @@ const deleteProfile = async (req, res, next) => {
       });
     }
 
-    // if (user.comments) {
-    let commentFromUserToDelete = user.comments.map(async (comment) => {
-      let commentsDeleted = commentsToDelete.map(async (id) => {
-        if ((comment._id = id)) {
-          const newUid = new ObjectId(user._id);
-          await User.findByIdAndUpdate(newUid, {
-            $pull: { comments: comment },
-          });
-        }
+    // For each user, loop through all of its associated comments
+    if (user.comments) {
+      let commentFromUserToDelete = user.comments.map(async (comment) => {
+        let commentsDeleted = commentsToDelete.map(async (id) => {
+          // Check if the comment to be deleted matches the current comment
+          if ((comment._id = id)) {
+            // If match found, remove the comment from the user's comments array
+            const newUid = new ObjectId(user._id);
+            await User.findByIdAndUpdate(newUid, {
+              $pull: { comments: comment },
+            });
+          }
+        });
       });
-    });
-    // }
+    }
   });
 
+  // Delete all the comments, places and the user
   try {
     await Comment.deleteMany({ _id: { $in: [...commentsToDelete] } });
     await Place.deleteMany({ _id: { $in: [...placesToDelete] } });
     await User.deleteOne({ _id: userId });
+    // Delete the profile picture from Cloudinary
     if (userPlaces.imageUrl.public_id) {
       await cloudinary.uploader.destroy(profilePictureToDelete);
     }
+    // Deletes place's images from Cloudinary
+    if (imageIdsToDelete.length) {
+      await cloudinary.api.delete_resources(imageIdsToDelete);
+    }
   } catch (err) {
+    // If any error occurs, return a 500 error with a message
     const error = new HttpError(
       "Something went wrong, could not delete the profile.",
       500
@@ -824,11 +850,7 @@ const deleteProfile = async (req, res, next) => {
     return next(error);
   }
 
-  // let allPlaces = filteredPlacesToDelete.map(async (place) => {
-
-  //   await place.deleteOne({ _id: place._id });
-  // });
-
+  // Return success message
   res.status(200).json({ message: "The profile was successfully deleted" });
 };
 
