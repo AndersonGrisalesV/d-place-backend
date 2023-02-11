@@ -12,13 +12,13 @@ const usersRoutes = require("./routes/users-routes");
 const HttpError = require("./models/http-error");
 
 // const path = require("path");
-var cors = require("cors");
-
+// var cors = require("cors");
+mongoose.set('strictQuery', true);
 // Initialize the express application
 const app = express();
 
 // Use cors middleware to handle cross-origin resource sharing
-app.use(cors());
+//app.use(cors());
 
 //*
 // app.use(express.json());
