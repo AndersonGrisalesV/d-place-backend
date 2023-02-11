@@ -1,8 +1,4 @@
 {
-  "engines": {
-    "node": "18.13.0"
-  },
-{
   "name": "d-place-backend",
   "version": "1.0.0",
   "description": "",
